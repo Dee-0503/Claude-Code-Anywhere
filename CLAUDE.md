@@ -39,4 +39,8 @@ GitHub repo operations must follow protected-main, PR-only integration, and one-
 Spec-kit is the primary workflow; implementation constraints such as TDD are execution details, not separate process tracks. Report progress by spec-kit phase and task ID.
 
 When a functional point is completed and verified, create a focused commit for that functional point before moving too far ahead; avoid large end-of-phase commits that are hard to review or roll back.
+
+## PR Review Communication
+
+Review feedback must be posted as ordinary PR comments. After addressing feedback, the submitter must reply in the PR comments with the fix summary, commit reference, and fresh validation evidence before requesting re-review.
 <!-- MANUAL ADDITIONS END -->
