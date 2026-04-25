@@ -156,14 +156,14 @@
 
 ### Tests for User Story 5
 
-- [ ] T060 [P] [US5] Add unit tests for multi-client FIFO ordering and cancellation in `backend/tests/unit/multi-client-input.test.ts`
-- [ ] T061 [P] [US5] Add integration test for two-client same-instance coordination in `backend/tests/integration/multi-client-coordination.test.ts`
+- [X] T060 [P] [US5] Add unit tests for multi-client FIFO ordering and cancellation in `backend/tests/unit/multi-client-input.test.ts`
+- [X] T061 [P] [US5] Add integration test for two-client same-instance coordination in `backend/tests/integration/multi-client-coordination.test.ts`
 
 ### Implementation for User Story 5
 
-- [ ] T062 [US5] Extend input queue with cancellation and interrupt classification in `backend/src/sessions/input-queue.ts`
-- [ ] T063 [US5] Implement multi-client presence broadcast in `backend/src/sessions/presence-service.ts`
-- [ ] T064 [US5] Implement queued input visibility messages in `shared/protocol/messages.ts`
+- [X] T062 [US5] Extend input queue with cancellation and interrupt classification in `backend/src/sessions/input-queue.ts`
+- [X] T063 [US5] Implement multi-client presence broadcast in `backend/src/sessions/presence-service.ts`
+- [X] T064 [US5] Implement queued input visibility messages in `shared/protocol/messages.ts`
 - [ ] T065 [US5] Implement queued input UI and cancel action in `frontend/src/components/InputQueuePanel.tsx`
 - [ ] T066 [US5] Implement explicit Ctrl+C confirmation UI in `frontend/src/components/InterruptConfirm.tsx`
 

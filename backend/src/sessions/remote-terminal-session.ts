@@ -5,6 +5,7 @@ import { createConnectionStateTracker } from "../api/connection-state.js";
 import { createInputQueue } from "./input-queue.js";
 import { injectReadyInput } from "./input-stream.js";
 import { BoundedOutputBuffer } from "./output-buffer.js";
+import { createPresenceService } from "./presence-service.js";
 import { replayOutput } from "./replay-service.js";
 
 interface HarnessOptions {
@@ -78,6 +79,8 @@ function createHarnessSessionService(
   const inputQueue = createInputQueue(
     options.now === undefined ? {} : { now: options.now },
   );
+  const presence = createPresenceService();
+  const interruptConfirmationsByInstance = new Map<string, Array<{ inputId: string; deviceId: string }>>();
 
   function getBuffer(instanceId: string): BoundedOutputBuffer {
     let buffer = buffers.get(instanceId);
@@ -148,6 +151,11 @@ function createHarnessSessionService(
         connection_id: crypto.randomUUID(),
         next_output_offset: buffer.snapshot.nextOffset,
       };
+      presence.join({
+        connectionId: firstMessage.connection_id,
+        deviceId: input.device_id,
+        instanceId,
+      });
 
       if (!seenInstances.has(instanceId)) {
         seenInstances.add(instanceId);
@@ -202,6 +210,11 @@ function createHarnessSessionService(
               deviceId: input.device_id,
               payload: message.payload,
             });
+            if (inputQueue.classify(message.payload) === "interrupt") {
+              const confirmations = interruptConfirmationsByInstance.get(message.instance_id) ?? [];
+              confirmations.push({ inputId: message.input_id, deviceId: input.device_id });
+              interruptConfirmationsByInstance.set(message.instance_id, confirmations);
+            }
             messages.push({
               type: SERVER_MESSAGE_TYPES.INPUT_ACK,
               instance_id: message.instance_id,
@@ -229,6 +242,18 @@ function createHarnessSessionService(
         pendingInputConfirmations() {
           return inputQueue.listPendingConfirmations(instanceId);
         },
+        queuedInputs() {
+          return inputQueue.listQueuedInputs(instanceId);
+        },
+        cancelQueuedInput(inputId: string) {
+          return inputQueue.cancel(instanceId, inputId);
+        },
+        interruptConfirmations() {
+          return [...(interruptConfirmationsByInstance.get(instanceId) ?? [])];
+        },
+        presence() {
+          return presence.list(instanceId);
+        },
         async queueDisconnectedInput(inputMessage: { input_id: string; payload: string }) {
           inputQueue.enqueue({
             id: inputMessage.input_id,
@@ -244,6 +269,7 @@ function createHarnessSessionService(
           }
         },
         async close() {
+          presence.leave(firstMessage.connection_id);
           return;
         },
       };

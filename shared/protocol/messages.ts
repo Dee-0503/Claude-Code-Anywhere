@@ -9,6 +9,8 @@ export const SERVER_MESSAGE_TYPES = {
   OUTPUT: "output",
   OUTPUT_GAP: "output_gap",
   INPUT_ACK: "input_ack",
+  QUEUED_INPUTS: "queued_inputs",
+  PRESENCE: "presence",
   CONNECTION_STATE: "connection_state",
   ERROR: "error",
 } as const;
@@ -89,6 +91,26 @@ export interface InputAckMessagePayload {
   status: InputAckStatus;
 }
 
+export interface QueuedInputMessagePayload {
+  type: typeof SERVER_MESSAGE_TYPES.QUEUED_INPUTS;
+  instance_id: string;
+  inputs: Array<{
+    input_id: string;
+    device_id: string;
+    payload: string;
+    status: "queued" | "cancelled";
+  }>;
+}
+
+export interface PresenceMessagePayload {
+  type: typeof SERVER_MESSAGE_TYPES.PRESENCE;
+  instance_id: string;
+  devices: Array<{
+    device_id: string;
+    connection_id: string;
+  }>;
+}
+
 export const CONNECTION_STATES = {
   CONNECTED: "connected",
   DEGRADED: "degraded",
@@ -113,6 +135,8 @@ export type ServerToClientMessage =
   | OutputMessagePayload
   | OutputGapMessagePayload
   | InputAckMessagePayload
+  | QueuedInputMessagePayload
+  | PresenceMessagePayload
   | ConnectionStateMessagePayload
   | ErrorMessagePayload;
 

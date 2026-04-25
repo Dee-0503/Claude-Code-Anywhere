@@ -23,10 +23,25 @@ export function createInputQueue(options: InputQueueOptions = {}) {
   const repository = options.repository ?? createInMemoryInputRepository();
   const now = options.now ?? (() => new Date());
 
+  function classify(payload: string): "text" | "interrupt" {
+    return payload === "" ? "interrupt" : "text";
+  }
+
   function enqueue(input: EnqueueInput): EnqueueResult {
     const existing = repository.get(input.instanceId, input.id);
     if (existing !== undefined) {
       return { status: INPUT_ACK_STATUSES.DUPLICATE, message: existing };
+    }
+    if (classify(input.payload) === "interrupt") {
+      const message = repository.create({
+        id: input.id,
+        instanceId: input.instanceId,
+        deviceId: input.deviceId,
+        payload: input.payload,
+        now: now(),
+      });
+      repository.updateStatus(input.instanceId, input.id, "cancelled", now());
+      return { status: INPUT_ACK_STATUSES.REJECTED, message };
     }
 
     const message = repository.create({
@@ -57,6 +72,18 @@ export function createInputQueue(options: InputQueueOptions = {}) {
       .filter((message) => message.status === "queued");
   }
 
+  function listQueuedInputs(instanceId: ClaudeInstanceId): InputMessage[] {
+    return listPendingConfirmations(instanceId);
+  }
+
+  function cancel(instanceId: ClaudeInstanceId, inputId: InputMessageId): InputMessage | undefined {
+    const message = repository.get(instanceId, inputId);
+    if (message?.status !== "queued") {
+      return undefined;
+    }
+    return repository.updateStatus(instanceId, inputId, "cancelled", now());
+  }
+
   function confirmPending(instanceId: ClaudeInstanceId, inputIds: readonly InputMessageId[]): InputMessage[] {
     const confirmed: InputMessage[] = [];
     for (const inputId of inputIds) {
@@ -71,7 +98,7 @@ export function createInputQueue(options: InputQueueOptions = {}) {
     return confirmed;
   }
 
-  return { enqueue, drainReady, listPendingConfirmations, confirmPending, repository };
+  return { enqueue, drainReady, listPendingConfirmations, listQueuedInputs, cancel, classify, confirmPending, repository };
 }
 
 export type InputQueue = ReturnType<typeof createInputQueue>;
