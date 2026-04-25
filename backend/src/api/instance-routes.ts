@@ -1,5 +1,7 @@
 import type { CLAUDE_INSTANCE_STATUSES, ClaudeInstanceId } from "../../../shared/protocol/domain.js";
+import { PROTOCOL_ERROR_CODES } from "../../../shared/protocol/errors.js";
 import type { BootstrapPairingService } from "../auth/pairing-service.js";
+import { createApiError } from "./errors.js";
 import type { InstanceService } from "../sessions/instance-service.js";
 
 export interface InstanceApiOptions {
@@ -22,6 +24,13 @@ export interface InstanceStatusRequest extends AuthenticatedInstanceRequest {
 }
 
 export function createInstanceApi(options: InstanceApiOptions) {
+  function instanceNotFound(instanceId: ClaudeInstanceId) {
+    return createApiError(PROTOCOL_ERROR_CODES.INSTANCE_UNAVAILABLE, "Instance not found", {
+      statusCode: 404,
+      details: { instance_id: instanceId },
+    });
+  }
+
   async function authenticate(input: AuthenticatedInstanceRequest) {
     return options.auth.verifyDeviceToken({
       device_id: input.device_id,
@@ -58,7 +67,7 @@ export function createInstanceApi(options: InstanceApiOptions) {
       await authenticate(input);
       const instance = options.instances.getInstance(input.instance_id);
       if (instance === undefined) {
-        throw new Error("Instance not found");
+        throw instanceNotFound(input.instance_id);
       }
       return {
         id: instance.id,
@@ -69,7 +78,7 @@ export function createInstanceApi(options: InstanceApiOptions) {
       await authenticate(input);
       const instance = options.instances.stopInstance(input.instance_id);
       if (instance === undefined) {
-        throw new Error("Instance not found");
+        throw instanceNotFound(input.instance_id);
       }
       return {
         stopped: true,

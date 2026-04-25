@@ -92,4 +92,40 @@ describe("instance API contract", () => {
     });
     expect(killed).toEqual([42]);
   });
+
+  it("returns typed not-found errors for unknown instances", async () => {
+    const auth = createBootstrapPairingService({
+      now: () => new Date("2026-04-25T12:00:00.000Z"),
+    });
+    const pairing = await auth.createBootstrapPairingCode();
+    const device = await auth.consumePairingCode({
+      pairing_code: pairing.pairing_code,
+      device_name: "Cee MacBook",
+    });
+    const api = createInstanceApi({
+      auth,
+      instances: createInstanceService({
+        now: () => new Date("2026-04-25T12:00:00.000Z"),
+      }),
+    });
+
+    await expect(api.getInstanceStatus({
+      device_id: device.device_id,
+      access_token: device.access_token,
+      instance_id: "missing-instance",
+    })).rejects.toMatchObject({
+      name: "ApiError",
+      code: "INSTANCE_UNAVAILABLE",
+      statusCode: 404,
+    });
+    await expect(api.stopInstance({
+      device_id: device.device_id,
+      access_token: device.access_token,
+      instance_id: "missing-instance",
+    })).rejects.toMatchObject({
+      name: "ApiError",
+      code: "INSTANCE_UNAVAILABLE",
+      statusCode: 404,
+    });
+  });
 });
