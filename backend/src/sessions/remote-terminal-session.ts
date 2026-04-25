@@ -196,6 +196,20 @@ function createHarnessSessionService(
         pendingInputConfirmations() {
           return inputQueue.listPendingConfirmations(instanceId);
         },
+        async queueDisconnectedInput(inputMessage: { input_id: string; payload: string }) {
+          inputQueue.enqueue({
+            id: inputMessage.input_id,
+            instanceId,
+            deviceId: input.device_id,
+            payload: inputMessage.payload,
+          });
+        },
+        async confirmPendingInput(inputIds: readonly string[]) {
+          const confirmed = inputQueue.confirmPending(instanceId, inputIds);
+          for (const message of confirmed) {
+            pty.process(instanceId).write(message.payload);
+          }
+        },
         async close() {
           return;
         },

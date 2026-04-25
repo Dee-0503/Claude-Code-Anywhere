@@ -45,4 +45,37 @@ describe("input queue", () => {
     expect(queue.drainReady("instance-id")).toHaveLength(1);
     expect(queue.drainReady("instance-id")).toHaveLength(0);
   });
+
+  it("does not request reconnect confirmation for input already injected into the PTY", () => {
+    const queue = createInputQueue({ now: () => new Date("2026-04-25T12:00:00.000Z") });
+
+    queue.enqueue({
+      id: "input-1",
+      instanceId: "instance-id",
+      deviceId: "device-id",
+      payload: "npm test\n",
+    });
+    queue.drainReady("instance-id");
+
+    expect(queue.listPendingConfirmations("instance-id")).toEqual([]);
+  });
+
+  it("requests reconnect confirmation only for queued input that was not injected", () => {
+    const queue = createInputQueue({ now: () => new Date("2026-04-25T12:00:00.000Z") });
+
+    queue.enqueue({
+      id: "input-1",
+      instanceId: "instance-id",
+      deviceId: "device-id",
+      payload: "npm test\n",
+    });
+
+    expect(queue.listPendingConfirmations("instance-id")).toEqual([
+      expect.objectContaining({
+        id: "input-1",
+        payload: "npm test\n",
+        status: "queued",
+      }),
+    ]);
+  });
 });

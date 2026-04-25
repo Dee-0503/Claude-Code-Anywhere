@@ -54,10 +54,24 @@ export function createInputQueue(options: InputQueueOptions = {}) {
   function listPendingConfirmations(instanceId: ClaudeInstanceId): InputMessage[] {
     return repository
       .listByInstance(instanceId)
-      .filter((message) => message.status === "queued" || message.status === "injected");
+      .filter((message) => message.status === "queued");
   }
 
-  return { enqueue, drainReady, listPendingConfirmations, repository };
+  function confirmPending(instanceId: ClaudeInstanceId, inputIds: readonly InputMessageId[]): InputMessage[] {
+    const confirmed: InputMessage[] = [];
+    for (const inputId of inputIds) {
+      const message = repository.get(instanceId, inputId);
+      if (message?.status === "queued") {
+        confirmed.push(message);
+      }
+    }
+    for (const message of confirmed) {
+      repository.updateStatus(instanceId, message.id, "injected", now());
+    }
+    return confirmed;
+  }
+
+  return { enqueue, drainReady, listPendingConfirmations, confirmPending, repository };
 }
 
 export type InputQueue = ReturnType<typeof createInputQueue>;
