@@ -1,7 +1,9 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
+
+import { compare, hash } from "bcryptjs";
 
 const TOKEN_BYTES = 32;
-const HASH_ALGORITHM = "sha256";
+const BCRYPT_COST = 12;
 
 export function generateToken(byteLength = TOKEN_BYTES): string {
   if (!Number.isInteger(byteLength) || byteLength < 16) {
@@ -11,21 +13,18 @@ export function generateToken(byteLength = TOKEN_BYTES): string {
   return randomBytes(byteLength).toString("base64url");
 }
 
-export function hashToken(token: string): string {
+export async function hashToken(token: string): Promise<string> {
   if (token.trim().length === 0) {
     throw new Error("Token must be non-empty");
   }
 
-  return createHash(HASH_ALGORITHM).update(token, "utf8").digest("hex");
+  return hash(token, BCRYPT_COST);
 }
 
-export function verifyToken(token: string, expectedHash: string): boolean {
+export async function verifyToken(token: string, expectedHash: string): Promise<boolean> {
   if (token.trim().length === 0 || expectedHash.trim().length === 0) {
     return false;
   }
 
-  const actual = Buffer.from(hashToken(token), "hex");
-  const expected = Buffer.from(expectedHash, "hex");
-
-  return actual.length === expected.length && timingSafeEqual(actual, expected);
+  return compare(token, expectedHash);
 }

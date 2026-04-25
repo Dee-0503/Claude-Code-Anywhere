@@ -23,6 +23,12 @@ pnpm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+*.d.ts
+*.d.ts.map
+*.js.map
+backend/**/*.js
+frontend/**/*.js
+shared/**/*.js
 
 # Third-party agent skills (installed via npx skills)
 .agents/

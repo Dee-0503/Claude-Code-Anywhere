@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 
 import { DEVICE_ROLES, type Device, type DeviceId, type DeviceRole } from "../../../shared/protocol/domain.js";
 import { createApiError } from "../api/errors.js";
@@ -46,9 +46,7 @@ function serviceError(code: string, message: string): Error & { code: string } {
 }
 
 function generatePairingCode(): string {
-  return `${Math.floor(Math.random() * 1_000).toString().padStart(3, "0")}-${Math.floor(
-    Math.random() * 1_000,
-  )
+  return `${randomInt(0, 1_000).toString().padStart(3, "0")}-${randomInt(0, 1_000)
     .toString()
     .padStart(3, "0")}`;
 }
@@ -65,7 +63,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
       throw serviceError("DEVICE_REVOKED", "Device has been revoked");
     }
 
-    const verified = devices.verifyToken(input.device_id, input.access_token);
+    const verified = await devices.verifyToken(input.device_id, input.access_token);
     if (verified === undefined) {
       throw serviceError("INVALID_DEVICE_TOKEN", "Invalid device token");
     }
@@ -87,7 +85,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
     const expiresAt = new Date(timestamp.getTime() + pairingTtlMs).toISOString();
     pairings.create({
       id: randomUUID(),
-      codeHash: hashToken(code),
+      codeHash: await hashToken(code),
       createdByDeviceId: null,
       expiresAt,
       usedAt: null,
@@ -108,7 +106,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
     const expiresAt = new Date(timestamp.getTime() + pairingTtlMs).toISOString();
     pairings.create({
       id: randomUUID(),
-      codeHash: hashToken(code),
+      codeHash: await hashToken(code),
       createdByDeviceId: admin.id,
       expiresAt,
       usedAt: null,
@@ -119,7 +117,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
   }
 
   async function consumePairingCode(input: ConsumePairingCodeInput): Promise<PairedDeviceResponse> {
-    const pairing = pairings.findByCode(input.pairing_code);
+    const pairing = await pairings.findByCode(input.pairing_code);
     if (pairing === undefined) {
       throw serviceError("PAIRING_CODE_INVALID", "Invalid pairing code");
     }
@@ -137,7 +135,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
       id: randomUUID(),
       name: input.device_name,
       role,
-      tokenHash: hashToken(accessToken),
+      tokenHash: await hashToken(accessToken),
       createdAt: timestamp,
       lastSeenAt: timestamp,
       revokedAt: null,

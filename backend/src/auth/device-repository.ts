@@ -7,7 +7,7 @@ export interface DeviceRepository {
   hasActiveAdmin(): boolean;
   updateLastSeen(deviceId: DeviceId, lastSeenAt: string): Device | undefined;
   revoke(deviceId: DeviceId, revokedAt: string): Device | undefined;
-  verifyToken(deviceId: DeviceId, accessToken: string): Device | undefined;
+  verifyToken(deviceId: DeviceId, accessToken: string): Promise<Device | undefined>;
 }
 
 export function createInMemoryDeviceRepository(): DeviceRepository {
@@ -43,10 +43,10 @@ export function createInMemoryDeviceRepository(): DeviceRepository {
       devices.set(deviceId, updated);
       return updated;
     },
-    verifyToken(deviceId, accessToken) {
+    async verifyToken(deviceId, accessToken) {
       const device = devices.get(deviceId);
       if (device === undefined) return undefined;
-      return verifyToken(accessToken, device.tokenHash) ? device : undefined;
+      return (await verifyToken(accessToken, device.tokenHash)) ? device : undefined;
     },
   };
 }

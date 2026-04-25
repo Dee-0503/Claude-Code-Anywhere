@@ -3,7 +3,7 @@ import { verifyToken } from "./tokens.js";
 
 export interface PairingRepository {
   create(pairing: PairingCode): PairingCode;
-  findByCode(code: string): PairingCode | undefined;
+  findByCode(code: string): Promise<PairingCode | undefined>;
   activeBootstrap(now: Date): PairingCode | undefined;
   markUsed(pairingId: PairingCodeId, usedByDeviceId: DeviceId, usedAt: string): PairingCode | undefined;
 }
@@ -16,9 +16,9 @@ export function createInMemoryPairingRepository(): PairingRepository {
       pairings.set(pairing.id, pairing);
       return pairing;
     },
-    findByCode(code) {
+    async findByCode(code) {
       for (const pairing of pairings.values()) {
-        if (verifyToken(code, pairing.codeHash)) {
+        if (await verifyToken(code, pairing.codeHash)) {
           return pairing;
         }
       }

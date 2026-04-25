@@ -1,7 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DEVICE_ROLES } from "../../../shared/protocol/domain.js";
+import { createInMemoryDeviceRepository } from "../../src/auth/device-repository.js";
+import { createInMemoryPairingRepository } from "../../src/auth/pairing-repository.js";
 import { createBootstrapPairingService } from "../../src/auth/pairing-service.js";
+import { verifyToken } from "../../src/auth/tokens.js";
 
 const NOW = new Date("2026-04-25T12:00:00.000Z");
 const TEN_MINUTES_MS = 10 * 60 * 1000;
@@ -45,6 +48,73 @@ describe("auth pairing contract", () => {
     await expect(
       service.consumePairingCode({ pairing_code, device_name: "Replay" }),
     ).rejects.toMatchObject({ code: "PAIRING_CODE_ALREADY_USED" });
+  });
+
+  it("stores issued device tokens as password hashes instead of raw or SHA-256 digests", async () => {
+    const devices = createInMemoryDeviceRepository();
+    const service = createBootstrapPairingService({
+      now: () => NOW,
+      pairingTtlMs: TEN_MINUTES_MS,
+      devices,
+    });
+    const { pairing_code } = await service.createBootstrapPairingCode();
+
+    const pairedDevice = await service.consumePairingCode({
+      pairing_code,
+      device_name: "Cee iPhone",
+    });
+    const storedDevice = devices.getById(pairedDevice.device_id);
+
+    expect(storedDevice?.tokenHash).toMatch(/^\$2[aby]\$\d{2}\$/);
+    expect(storedDevice?.tokenHash).not.toBe(pairedDevice.access_token);
+    expect(storedDevice?.tokenHash).not.toMatch(/^[a-f0-9]{64}$/);
+    await expect(verifyToken(pairedDevice.access_token, storedDevice?.tokenHash ?? "")).resolves.toBe(true);
+  });
+
+  it("does not use Math.random when creating pairing codes", async () => {
+    const mathRandomSpy = vi.spyOn(Math, "random").mockImplementation(() => {
+      throw new Error("Math.random must not generate pairing codes");
+    });
+    const service = createService();
+
+    try {
+      await expect(service.createBootstrapPairingCode()).resolves.toMatchObject({
+        pairing_code: expect.stringMatching(/^\d{3}-\d{3}$/),
+      });
+      expect(mathRandomSpy).not.toHaveBeenCalled();
+    } finally {
+      mathRandomSpy.mockRestore();
+    }
+  });
+
+  it("rejects expired pairing codes with the contract error code", async () => {
+    let currentTime = NOW;
+    const service = createBootstrapPairingService({
+      now: () => currentTime,
+      pairingTtlMs: TEN_MINUTES_MS,
+    });
+    const { pairing_code } = await service.createBootstrapPairingCode();
+    currentTime = new Date(NOW.getTime() + TEN_MINUTES_MS + 1);
+
+    await expect(
+      service.consumePairingCode({ pairing_code, device_name: "Late browser" }),
+    ).rejects.toMatchObject({ code: "PAIRING_CODE_EXPIRED" });
+  });
+
+  it("does not expose reusable plaintext pairing codes in storage", async () => {
+    const pairings = createInMemoryPairingRepository();
+    const service = createBootstrapPairingService({
+      now: () => NOW,
+      pairingTtlMs: TEN_MINUTES_MS,
+      pairings,
+    });
+
+    const { pairing_code } = await service.createBootstrapPairingCode();
+    const storedPairing = await pairings.findByCode(pairing_code);
+
+    expect(storedPairing?.codeHash).toMatch(/^\$2[aby]\$\d{2}\$/);
+    expect(storedPairing?.codeHash).not.toBe(pairing_code);
+    expect(storedPairing?.codeHash).not.toMatch(/^[a-f0-9]{64}$/);
   });
 
   it("allows an admin token to create member pairing codes and rejects invalid tokens", async () => {
