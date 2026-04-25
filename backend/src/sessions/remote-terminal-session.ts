@@ -1,6 +1,9 @@
 import type { DeviceId } from "../../../shared/protocol/domain.js";
-import { CLIENT_MESSAGE_TYPES, INPUT_ACK_STATUSES, SERVER_MESSAGE_TYPES, type ClientToServerMessage, type HelloMessagePayload, type ServerToClientMessage } from "../../../shared/protocol/messages.js";
+import { CLIENT_MESSAGE_TYPES, SERVER_MESSAGE_TYPES, type ClientToServerMessage, type HelloMessagePayload, type ServerToClientMessage } from "../../../shared/protocol/messages.js";
 import { createBootstrapPairingService, type BootstrapPairingService } from "../auth/pairing-service.js";
+import { createConnectionStateTracker } from "../api/connection-state.js";
+import { createInputQueue } from "./input-queue.js";
+import { injectReadyInput } from "./input-stream.js";
 import { BoundedOutputBuffer } from "./output-buffer.js";
 import { replayOutput } from "./replay-service.js";
 
@@ -20,6 +23,7 @@ interface AttachTerminalInput {
 
 class ScriptedPtyHarness {
   private readonly writers = new Map<string, (data: string) => void>();
+  private readonly inputsByInstance = new Map<string, string[]>();
 
   register(instanceId: string, writer: (data: string) => void): void {
     this.writers.set(instanceId, writer);
@@ -31,6 +35,20 @@ class ScriptedPtyHarness {
       throw new Error(`Unknown instance: ${instanceId}`);
     }
     writer(data);
+  }
+
+  process(instanceId: string) {
+    return {
+      write: (data: string) => {
+        const inputs = this.inputsByInstance.get(instanceId) ?? [];
+        inputs.push(data);
+        this.inputsByInstance.set(instanceId, inputs);
+      },
+    };
+  }
+
+  inputs(instanceId: string): string[] {
+    return [...(this.inputsByInstance.get(instanceId) ?? [])];
   }
 }
 
@@ -54,6 +72,9 @@ function createHarnessSessionService(
   const seenInstances = new Set<string>();
   const latestByInstance = new Map<string, string>();
   const capacity = options.outputBufferBytes ?? 1024 * 1024;
+  const inputQueue = createInputQueue(
+    options.now === undefined ? {} : { now: options.now },
+  );
 
   function getBuffer(instanceId: string): BoundedOutputBuffer {
     let buffer = buffers.get(instanceId);
@@ -71,6 +92,11 @@ function createHarnessSessionService(
       deviceInstances.set(input.device_id, instanceId);
 
       const buffer = getBuffer(instanceId);
+      const connectionState = createConnectionStateTracker({
+        degradedAfterMs: 1_000,
+        disconnectedAfterMs: 3_000,
+        ...(options.now === undefined ? {} : { now: options.now }),
+      });
       const messages: ServerToClientMessage[] = [];
       pty.register(instanceId, (data) => {
         latestByInstance.set(instanceId, data);
@@ -110,15 +136,16 @@ function createHarnessSessionService(
       const replayNow = () => {
         const latestReplay = replayOutput(buffer, input.last_output_offset);
         const latestData = latestByInstance.get(instanceId);
+        const nonOutputMessages = messages.filter((message) => message.type !== SERVER_MESSAGE_TYPES.OUTPUT && message.type !== SERVER_MESSAGE_TYPES.OUTPUT_GAP);
         if (latestData !== undefined && latestReplay.length === 0) {
           messages.splice(0, messages.length, {
             type: SERVER_MESSAGE_TYPES.OUTPUT,
             instance_id: instanceId,
             offset: input.last_output_offset,
             data: latestData,
-          });
+          }, ...nonOutputMessages);
         } else if (latestReplay.length > 0) {
-          messages.splice(0, messages.length, ...latestReplay);
+          messages.splice(0, messages.length, ...latestReplay, ...nonOutputMessages);
         }
         return messages;
       };
@@ -136,13 +163,38 @@ function createHarnessSessionService(
             return;
           }
           if (message.type === CLIENT_MESSAGE_TYPES.INPUT) {
+            const result = inputQueue.enqueue({
+              id: message.input_id,
+              instanceId: message.instance_id,
+              deviceId: input.device_id,
+              payload: message.payload,
+            });
             messages.push({
               type: SERVER_MESSAGE_TYPES.INPUT_ACK,
               instance_id: message.instance_id,
               input_id: message.input_id,
-              status: INPUT_ACK_STATUSES.ACCEPTED,
+              status: result.status,
+            });
+            injectReadyInput({
+              instanceId: message.instance_id,
+              queue: inputQueue,
+              process: pty.process(message.instance_id),
             });
           }
+          if (message.type === CLIENT_MESSAGE_TYPES.HEARTBEAT) {
+            messages.push(connectionState.markHeartbeat(new Date(message.sent_at)));
+          }
+        },
+        markHeartbeat(at: Date) {
+          return connectionState.markHeartbeat(at);
+        },
+        evaluateConnection(at: Date) {
+          const state = connectionState.evaluate(at);
+          messages.push(state);
+          return state;
+        },
+        pendingInputConfirmations() {
+          return inputQueue.listPendingConfirmations(instanceId);
         },
         async close() {
           return;
