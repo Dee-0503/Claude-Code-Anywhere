@@ -1,0 +1,46 @@
+# macOS
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+*.d.ts
+*.d.ts.map
+*.js.map
+backend/**/*.js
+frontend/**/*.js
+shared/**/*.js
+
+# Third-party agent skills (installed via npx skills)
+.agents/
+
+# Claude Code local worktrees
+.claude/worktrees/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
