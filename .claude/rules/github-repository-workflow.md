@@ -62,8 +62,11 @@ main
 - Do not push directly to `main`.
 - PR scope should usually match one complete user story (US) or another independently testable spec-kit increment.
 - For spec-kit work, open review PRs from short-lived `001-xxx-usN` or `review/001-xxx-usN` branches, and keep the authoritative implementation line on the matching `001-xxx` branch.
-- Delete or stop using short-lived review branches after merge. Never continue pushing new commits to an already-merged PR branch; create a new spec-scoped review branch instead.
+- Spec-kit review PRs must target `develop` as the base branch.
+- Delete short-lived review branches after merge. Never continue pushing new commits to an already-merged PR branch; create a new spec-scoped review branch instead.
 - Workflow or repository-rule changes must use their own docs branch/PR and must not be bundled into user-story implementation PRs.
+- `docs/*` PRs targeting `develop` may be auto-merged without human review only when the docs-only workflow validates that every changed file is documentation, project guidance, or the docs-only workflow itself.
+- `docs/*` PRs targeting `test` or `main` still follow release-branch protection and review requirements.
 - Keep commits inside the PR at functional-point granularity so review and rollback can target the smallest coherent change.
 - If foundational work is large or blocks multiple user stories, split it into a separate foundational PR before story-level PRs.
 - When a later US depends on an unmerged earlier PR, use a stacked PR: create the later US branch from the earlier PR head, open the later PR against that head branch, then after the earlier PR merges, rebase the later branch onto `develop` and retarget the later PR to `develop`.
@@ -83,6 +86,8 @@ At the end of each phase, verify:
 
 - `main` has no direct commits bypassing PRs.
 - `develop`, `test`, and active `hotfix/*` branches follow PR-based promotion and back-merge rules.
+- `docs/*` PRs auto-merged into `develop` passed docs-only path validation.
+- Spec-kit review PRs target `develop`, and merged short-lived review branches are deleted.
 - Feature branches are either merged through PRs or intentionally retained.
 - Each feature point has traceable commits and PR discussion.
 - Spec-kit artifacts remain consistent with implementation state.

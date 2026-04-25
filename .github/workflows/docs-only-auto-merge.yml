@@ -1,0 +1,50 @@
+name: Docs-only auto merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [develop]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  docs-only-auto-merge:
+    if: ${{ !github.event.pull_request.draft && startsWith(github.event.pull_request.head.ref, 'docs/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate docs-only changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          changed_files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+
+          if [ -z "$changed_files" ]; then
+            echo "No changed files found."
+            exit 1
+          fi
+
+          invalid_files=$(printf '%s\n' "$changed_files" | grep -Ev '(^|/)[^/]+\.md$|^CLAUDE\.md$|^\.claude/rules/.*\.md$|^specs/.*\.md$|^\.github/workflows/docs-only-auto-merge\.yml$' || true)
+
+          if [ -n "$invalid_files" ]; then
+            echo "This docs/* PR contains non-docs-only files:"
+            printf '%s\n' "$invalid_files"
+            exit 1
+          fi
+
+          echo "Docs-only validation passed."
+
+      - name: Merge pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --squash --delete-branch
