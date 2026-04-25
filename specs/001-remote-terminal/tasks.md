@@ -133,12 +133,12 @@
 
 ### Tests for User Story 4
 
-- [ ] T053 [P] [US4] Add contract tests for instance list, create, status, and stop operations in `backend/tests/contract/instance-api.test.ts`
-- [ ] T054 [P] [US4] Add integration test for multi-device revocation and instance switching in `backend/tests/integration/multi-device-instance.test.ts`
+- [X] T053 [P] [US4] Add contract tests for instance list, create, status, and stop operations in `backend/tests/contract/instance-api.test.ts`
+- [X] T054 [P] [US4] Add integration test for multi-device revocation and instance switching in `backend/tests/integration/multi-device-instance.test.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T055 [US4] Implement instance API handlers in `backend/src/api/instance-routes.ts`
+- [X] T055 [US4] Implement instance API handlers in `backend/src/api/instance-routes.ts`
 - [ ] T056 [US4] Implement device management API handlers in `backend/src/api/device-routes.ts`
 - [ ] T057 [US4] Implement admin transfer and device revocation logic in `backend/src/auth/admin-service.ts`
 - [ ] T058 [US4] Implement instance switcher UI in `frontend/src/components/InstanceSwitcher.tsx`
