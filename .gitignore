@@ -27,6 +27,9 @@ pnpm-debug.log*
 # Third-party agent skills (installed via npx skills)
 .agents/
 
+# Claude Code local worktrees
+.claude/worktrees/
+
 # IDE
 .vscode/
 .idea/
