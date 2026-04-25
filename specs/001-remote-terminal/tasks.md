@@ -141,8 +141,8 @@
 - [X] T055 [US4] Implement instance API handlers in `backend/src/api/instance-routes.ts`
 - [X] T056 [US4] Implement device management API handlers in `backend/src/api/device-routes.ts`
 - [X] T057 [US4] Implement admin transfer and device revocation logic in `backend/src/auth/admin-service.ts`
-- [ ] T058 [US4] Implement instance switcher UI in `frontend/src/components/InstanceSwitcher.tsx`
-- [ ] T059 [US4] Implement device management UI in `frontend/src/components/DeviceManager.tsx`
+- [X] T058 [US4] Implement instance switcher UI in `frontend/src/components/InstanceSwitcher.tsx`
+- [X] T059 [US4] Implement device management UI in `frontend/src/components/DeviceManager.tsx`
 
 **Checkpoint**: Multiple devices and instances are manageable through authenticated UI flows.
 
