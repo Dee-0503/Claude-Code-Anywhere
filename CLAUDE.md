@@ -30,7 +30,7 @@ Auto-generated from all feature plans. Last updated: 2026-04-25
 <!-- MANUAL ADDITIONS START -->
 ## Repository Workflow
 
-GitHub repo operations must follow protected-main, PR-only integration, and one-functional-point-per-commit discipline.
+GitHub repo operations must follow protected-main, PR-only integration, one-functional-point-per-commit, and user-story-sized PR discipline.
 
 → @.claude/rules/github-repository-workflow.md
 

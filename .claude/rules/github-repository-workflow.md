@@ -45,6 +45,9 @@ main
 
 - Every merge into `main` must go through a Pull Request.
 - Do not push directly to `main`.
+- PR scope should usually match one complete user story (US) or another independently testable spec-kit increment.
+- Keep commits inside the PR at functional-point granularity so review and rollback can target the smallest coherent change.
+- If foundational work is large or blocks multiple user stories, split it into a separate foundational PR before story-level PRs.
 - PRs should describe the intent, scope, test evidence, and any known risks.
 - Keep PRs focused. Split when rollback or review ownership would otherwise be unclear.
 - Before requesting merge, run the relevant spec-kit validation/checklist for the current phase.
