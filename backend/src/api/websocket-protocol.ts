@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { SERVER_MESSAGE_TYPES, type ClientToServerMessage, type HelloMessagePayload, type WebSocketConnectionParams } from "../../../shared/protocol/messages.js";
+import { SERVER_MESSAGE_TYPES, type ClientToServerMessage, type HelloMessagePayload, type InputAckStatus, type WebSocketConnectionParams, type ConnectionState } from "../../../shared/protocol/messages.js";
 import { BoundedOutputBuffer } from "../sessions/output-buffer.js";
 import { validateWebSocketHandshake } from "./websocket-auth.js";
 import { replayOutput, type ReplayMessage } from "../sessions/replay-service.js";
@@ -65,6 +65,20 @@ export function createWebSocketProtocolService(options: WebSocketProtocolService
         instance_id: input.instanceId,
         requested_offset: input.requestedOffset,
         available_from_offset: input.availableFromOffset,
+      };
+    },
+    serializeInputAck(input: { instanceId: string; inputId: string; status: InputAckStatus }) {
+      return {
+        type: SERVER_MESSAGE_TYPES.INPUT_ACK,
+        instance_id: input.instanceId,
+        input_id: input.inputId,
+        status: input.status,
+      };
+    },
+    serializeConnectionState(state: ConnectionState) {
+      return {
+        type: SERVER_MESSAGE_TYPES.CONNECTION_STATE,
+        state,
       };
     },
     parseClientMessage(raw: string): ClientToServerMessage {

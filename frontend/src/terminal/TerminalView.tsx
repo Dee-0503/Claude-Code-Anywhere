@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactElement } from "react";
 import { Terminal } from "xterm";
 
-import { SERVER_MESSAGE_TYPES } from "../../../shared/protocol/messages.js";
+import { SERVER_MESSAGE_TYPES, type ConnectionState } from "../../../shared/protocol/messages.js";
 import type { ClaudeInstanceId, DeviceId, InputMessageId } from "../../../shared/protocol/domain.js";
+import { ConnectionStatus, type DisplayConnectionState } from "../components/ConnectionStatus.js";
+import { OfflineInputConfirm } from "../components/OfflineInputConfirm.js";
 import type { ProtocolClient, ProtocolClientStatus } from "../protocol/client.js";
 import type { DeviceCredentials } from "../protocol/device-credentials.js";
+import { createInputRecoveryClient, type InputRecoveryClient, type PendingInput } from "../protocol/input-client.js";
 import { loadLastOutputOffset, saveLastOutputOffset } from "../protocol/reconnect.js";
 
 export interface TerminalViewProps {
@@ -22,11 +25,19 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fallbackBufferRef = useRef("");
+  const inputClientRef = useRef<InputRecoveryClient | null>(null);
   const [status, setStatus] = useState<ProtocolClientStatus>(client.status);
+  const [connectionState, setConnectionState] = useState<DisplayConnectionState>(client.status);
   const [notice, setNotice] = useState("等待连接。");
   const [fallbackInput, setFallbackInput] = useState("");
+  const [pendingInputs, setPendingInputs] = useState<PendingInput[]>([]);
 
-  useEffect(() => client.on("status", setStatus), [client]);
+  useEffect(() => client.on("status", (nextStatus) => {
+    setStatus(nextStatus);
+    setConnectionState(nextStatus === "closed" && status === "open" ? "reconnecting" : nextStatus);
+    inputClientRef.current?.setOnline(nextStatus === "open");
+    setPendingInputs(inputClientRef.current?.pending() ?? []);
+  }), [client, status]);
 
   useEffect(() => {
     if (containerRef.current === null) {
@@ -38,12 +49,9 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
     terminalRef.current = terminal;
 
     const inputDispose = terminal.onData((payload) => {
-      if (credentials !== null && client.status === "open") {
-        client.sendInput({
-          instanceId,
-          inputId: createInputId(credentials.device_id),
-          payload,
-        });
+      if (credentials !== null) {
+        inputClientRef.current?.send(payload);
+        setPendingInputs(inputClientRef.current?.pending() ?? []);
       }
     });
 
@@ -52,6 +60,22 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       terminal.dispose();
       terminalRef.current = null;
     };
+  }, [client, credentials, instanceId]);
+
+  useEffect(() => {
+    if (credentials === null) {
+      inputClientRef.current = null;
+      setPendingInputs([]);
+      return;
+    }
+
+    inputClientRef.current = createInputRecoveryClient({
+      deviceId: credentials.device_id,
+      instanceId,
+      transport: client,
+      createInputId: () => createInputId(credentials.device_id),
+    });
+    setPendingInputs([]);
   }, [client, credentials, instanceId]);
 
   useEffect(() => {
@@ -75,9 +99,12 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           );
           break;
         case SERVER_MESSAGE_TYPES.CONNECTION_STATE:
+          setConnectionState(message.state as ConnectionState);
           setNotice(`连接状态：${message.state}`);
           break;
         case SERVER_MESSAGE_TYPES.INPUT_ACK:
+          inputClientRef.current?.handleAck(message);
+          setPendingInputs(inputClientRef.current?.pending() ?? []);
           break;
         case SERVER_MESSAGE_TYPES.ERROR:
           setNotice(`${message.code}: ${message.message}`);
@@ -111,13 +138,21 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
 
     event.preventDefault();
     const payload = `${fallbackInput}\n`;
-    client.sendInput({ instanceId, inputId: createInputId(credentials.device_id), payload });
+    inputClientRef.current?.send(payload);
+    setPendingInputs(inputClientRef.current?.pending() ?? []);
     setFallbackInput("");
+  }
+
+  function handleConfirmOfflineInput(): void {
+    inputClientRef.current?.confirmReplay();
+    setPendingInputs(inputClientRef.current?.pending() ?? []);
   }
 
   return (
     <section aria-label="远程终端">
       <p>连接状态：{status}</p>
+      <ConnectionStatus state={connectionState} />
+      <OfflineInputConfirm pendingInputs={pendingInputs} onConfirm={handleConfirmOfflineInput} />
       <p>{notice}</p>
       <div ref={containerRef} role="terminal" style={{ minHeight: "24rem", width: "100%" }} />
       <label>
