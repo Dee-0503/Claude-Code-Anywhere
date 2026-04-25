@@ -61,11 +61,49 @@ describe("weak network input recovery", () => {
       last_output_offset: session.nextOutputOffset,
     });
 
+    expect(reconnected.pendingInputConfirmations()).toEqual([]);
+  });
+
+  it("keeps disconnected input queued until reconnect confirmation injects it once", async () => {
+    const harness = await createRemoteTerminalSessionHarness({
+      now: () => new Date("2026-04-25T12:00:00.000Z"),
+      ptyScript: ["ready\n"],
+    });
+    const bootstrap = await harness.auth.createBootstrapPairingCode();
+    const device = await harness.auth.consumePairingCode({
+      pairing_code: bootstrap.pairing_code,
+      device_name: "Cee iPhone",
+    });
+    const session = await harness.sessions.attachTerminal({
+      device_id: device.device_id,
+      access_token: device.access_token,
+      last_output_offset: 0,
+    });
+
+    await session.queueDisconnectedInput({
+      input_id: "offline-1",
+      payload: "git status\n",
+    });
+    await session.close();
+
+    const reconnected = await harness.sessions.attachTerminal({
+      device_id: device.device_id,
+      access_token: device.access_token,
+      instance_id: session.firstMessage.instance_id,
+      last_output_offset: session.nextOutputOffset,
+    });
+
     expect(reconnected.pendingInputConfirmations()).toEqual([
       expect.objectContaining({
-        id: "input-1",
-        payload: "npm test\n",
+        id: "offline-1",
+        payload: "git status\n",
+        status: "queued",
       }),
     ]);
+
+    await reconnected.confirmPendingInput(["offline-1"]);
+
+    expect(harness.pty.inputs(session.firstMessage.instance_id)).toEqual(["git status\n"]);
+    expect(reconnected.pendingInputConfirmations()).toEqual([]);
   });
 });
