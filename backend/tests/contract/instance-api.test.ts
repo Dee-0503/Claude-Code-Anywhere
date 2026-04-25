@@ -3,7 +3,27 @@ import { describe, expect, it } from "vitest";
 import { CLAUDE_INSTANCE_STATUSES } from "../../../shared/protocol/domain.js";
 import { createInstanceApi } from "../../src/api/instance-routes.js";
 import { createBootstrapPairingService } from "../../src/auth/pairing-service.js";
+import type { PtyAdapter, PtyProcess } from "../../src/pty/pty-adapter.js";
 import { createInstanceService } from "../../src/sessions/instance-service.js";
+
+function createKillTrackingPty() {
+  const killed: number[] = [];
+  const pty: PtyAdapter = {
+    spawn() {
+      const process: PtyProcess = {
+        pid: 42,
+        write() { return; },
+        resize() { return; },
+        kill() { killed.push(process.pid); },
+        onData() { return; },
+        onExit() { return; },
+      };
+      return process;
+    },
+  };
+
+  return { pty, killed };
+}
 
 describe("instance API contract", () => {
   it("lists, creates, reports status, and stops instances for authenticated devices", async () => {
@@ -15,9 +35,11 @@ describe("instance API contract", () => {
       pairing_code: pairing.pairing_code,
       device_name: "Cee MacBook",
     });
+    const { pty, killed } = createKillTrackingPty();
     const api = createInstanceApi({
       auth,
       instances: createInstanceService({
+        pty,
         now: () => new Date("2026-04-25T12:00:00.000Z"),
       }),
     });
@@ -59,8 +81,6 @@ describe("instance API contract", () => {
     })).resolves.toEqual({
       id: created.id,
       status: CLAUDE_INSTANCE_STATUSES.RUNNING,
-      next_output_offset: 0,
-      connected_devices: 0,
     });
     await expect(api.stopInstance({
       device_id: device.device_id,
@@ -70,5 +90,6 @@ describe("instance API contract", () => {
       stopped: true,
       status: CLAUDE_INSTANCE_STATUSES.EXITED,
     });
+    expect(killed).toEqual([42]);
   });
 });

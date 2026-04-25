@@ -63,6 +63,8 @@ export function createInstanceService(options: InstanceServiceOptions = {}) {
       status: "exited",
       exitedAt: now().toISOString(),
     };
+    const process = processes.get(instanceId);
+    process?.kill();
     processes.delete(instanceId);
     return repository.update(updated);
   }

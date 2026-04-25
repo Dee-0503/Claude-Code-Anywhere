@@ -63,8 +63,6 @@ export function createInstanceApi(options: InstanceApiOptions) {
       return {
         id: instance.id,
         status: instance.status,
-        next_output_offset: 0,
-        connected_devices: 0,
       };
     },
     async stopInstance(input: InstanceStatusRequest) {
