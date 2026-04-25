@@ -84,19 +84,19 @@
 
 ### Tests for User Story 2
 
-- [ ] T036 [P] [US2] Add contract tests for input, input_ack, heartbeat, and connection_state messages in `backend/tests/contract/input-recovery.test.ts`
-- [ ] T037 [P] [US2] Add unit tests for FIFO input queue and duplicate input IDs in `backend/tests/unit/input-queue.test.ts`
-- [ ] T038 [P] [US2] Add integration test for degraded connection retry and reconnect confirmation in `backend/tests/integration/weak-network-input.test.ts`
+- [X] T036 [P] [US2] Add contract tests for input, input_ack, heartbeat, and connection_state messages in `backend/tests/contract/input-recovery.test.ts`
+- [X] T037 [P] [US2] Add unit tests for FIFO input queue and duplicate input IDs in `backend/tests/unit/input-queue.test.ts`
+- [X] T038 [P] [US2] Add integration test for degraded connection retry and reconnect confirmation in `backend/tests/integration/weak-network-input.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T039 [US2] Implement input message repository in `backend/src/sessions/input-repository.ts`
-- [ ] T040 [US2] Implement FIFO input queue with idempotency in `backend/src/sessions/input-queue.ts`
-- [ ] T041 [US2] Wire acknowledged input injection to PTY stdin in `backend/src/sessions/input-stream.ts`
-- [ ] T042 [US2] Implement heartbeat timeout and connection state transitions in `backend/src/api/connection-state.ts`
-- [ ] T043 [US2] Implement frontend input retry and duplicate suppression in `frontend/src/protocol/input-client.ts`
-- [ ] T044 [US2] Implement degraded, disconnected, and reconnecting UI states in `frontend/src/components/ConnectionStatus.tsx`
-- [ ] T045 [US2] Implement offline input confirmation UI in `frontend/src/components/OfflineInputConfirm.tsx`
+- [X] T039 [US2] Implement input message repository in `backend/src/sessions/input-repository.ts`
+- [X] T040 [US2] Implement FIFO input queue with idempotency in `backend/src/sessions/input-queue.ts`
+- [X] T041 [US2] Wire acknowledged input injection to PTY stdin in `backend/src/sessions/input-stream.ts`
+- [X] T042 [US2] Implement heartbeat timeout and connection state transitions in `backend/src/api/connection-state.ts`
+- [X] T043 [US2] Implement frontend input retry and duplicate suppression in `frontend/src/protocol/input-client.ts`
+- [X] T044 [US2] Implement degraded, disconnected, and reconnecting UI states in `frontend/src/components/ConnectionStatus.tsx`
+- [X] T045 [US2] Implement offline input confirmation UI in `frontend/src/components/OfflineInputConfirm.tsx`
 
 **Checkpoint**: Input remains safe and recoverable under weak network conditions.
 
