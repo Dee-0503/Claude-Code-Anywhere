@@ -3,9 +3,11 @@ import { verifyToken } from "./tokens.js";
 
 export interface DeviceRepository {
   create(device: Device): Device;
+  list(): Device[];
   getById(deviceId: DeviceId): Device | undefined;
   hasActiveAdmin(): boolean;
   updateLastSeen(deviceId: DeviceId, lastSeenAt: string): Device | undefined;
+  updateRole(deviceId: DeviceId, role: Device["role"]): Device | undefined;
   revoke(deviceId: DeviceId, revokedAt: string): Device | undefined;
   verifyToken(deviceId: DeviceId, accessToken: string): Promise<Device | undefined>;
 }
@@ -17,6 +19,9 @@ export function createInMemoryDeviceRepository(): DeviceRepository {
     create(device) {
       devices.set(device.id, device);
       return device;
+    },
+    list() {
+      return [...devices.values()];
     },
     getById(deviceId) {
       return devices.get(deviceId);
@@ -33,6 +38,13 @@ export function createInMemoryDeviceRepository(): DeviceRepository {
       const device = devices.get(deviceId);
       if (device === undefined) return undefined;
       const updated = { ...device, lastSeenAt };
+      devices.set(deviceId, updated);
+      return updated;
+    },
+    updateRole(deviceId, role) {
+      const device = devices.get(deviceId);
+      if (device === undefined) return undefined;
+      const updated = { ...device, role };
       devices.set(deviceId, updated);
       return updated;
     },

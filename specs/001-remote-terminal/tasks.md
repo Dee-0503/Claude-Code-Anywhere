@@ -139,8 +139,8 @@
 ### Implementation for User Story 4
 
 - [X] T055 [US4] Implement instance API handlers in `backend/src/api/instance-routes.ts`
-- [ ] T056 [US4] Implement device management API handlers in `backend/src/api/device-routes.ts`
-- [ ] T057 [US4] Implement admin transfer and device revocation logic in `backend/src/auth/admin-service.ts`
+- [X] T056 [US4] Implement device management API handlers in `backend/src/api/device-routes.ts`
+- [X] T057 [US4] Implement admin transfer and device revocation logic in `backend/src/auth/admin-service.ts`
 - [ ] T058 [US4] Implement instance switcher UI in `frontend/src/components/InstanceSwitcher.tsx`
 - [ ] T059 [US4] Implement device management UI in `frontend/src/components/DeviceManager.tsx`
 
