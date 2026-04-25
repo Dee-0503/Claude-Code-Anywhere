@@ -110,16 +110,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T046 [P] [US3] Add unit tests for notification priority routing in `backend/tests/unit/notification-routing.test.ts`
-- [ ] T047 [P] [US3] Add integration test for permission request approval flow in `backend/tests/integration/authorization-loop.test.ts`
+- [X] T046 [P] [US3] Add unit tests for notification priority routing in `backend/tests/unit/notification-routing.test.ts`
+- [X] T047 [P] [US3] Add integration test for permission request approval flow in `backend/tests/integration/authorization-loop.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T048 [US3] Implement notification repository in `backend/src/notifications/notification-repository.ts`
-- [ ] T049 [US3] Implement notification routing and escalation service in `backend/src/notifications/notification-service.ts`
-- [ ] T050 [US3] Implement terminal authorization event bridge in `backend/src/notifications/authorization-bridge.ts`
-- [ ] T051 [US3] Implement notification center UI in `frontend/src/components/NotificationCenter.tsx`
-- [ ] T052 [US3] Implement authorization approval prompt UI in `frontend/src/components/AuthorizationPrompt.tsx`
+- [X] T048 [US3] Implement notification repository in `backend/src/notifications/notification-repository.ts`
+- [X] T049 [US3] Implement notification routing and escalation service in `backend/src/notifications/notification-service.ts`
+- [X] T050 [US3] Implement terminal authorization event bridge in `backend/src/notifications/authorization-bridge.ts`
+- [X] T051 [US3] Implement notification center UI in `frontend/src/components/NotificationCenter.tsx`
+- [X] T052 [US3] Implement authorization approval prompt UI in `frontend/src/components/AuthorizationPrompt.tsx`
 
 **Checkpoint**: Notification and authorization loop works independently of later multi-instance features.
 
