@@ -32,6 +32,8 @@ describe("authorization loop", () => {
       deviceId: "phone",
       decision: "approved",
     });
+    expect(request.status()).toBe("resolved");
+    expect(bridge.pendingCount()).toBe(0);
     expect(service.get(request.notificationId)).toMatchObject({
       type: NOTIFICATION_EVENT_TYPES.PERMISSION_REQUEST,
       priority: NOTIFICATION_PRIORITIES.URGENT,

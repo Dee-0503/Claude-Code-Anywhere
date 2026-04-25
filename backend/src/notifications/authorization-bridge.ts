@@ -29,6 +29,7 @@ export function createAuthorizationBridge(options: AuthorizationBridgeOptions) {
     readonly resolve: (decision: AuthorizationDecisionResult) => void;
     resolved: boolean;
   }>();
+  const resolvedRequests = new Set<NotificationEventId>();
 
   function createPermissionRequest(input: AuthorizationRequestInput) {
     const notification = options.notifications.emit({
@@ -47,7 +48,7 @@ export function createAuthorizationBridge(options: AuthorizationBridgeOptions) {
     return {
       notificationId: notification.id,
       decision,
-      status: () => pending.get(notification.id)?.resolved === true ? "resolved" : "waiting",
+      status: () => resolvedRequests.has(notification.id) ? "resolved" : "waiting",
     };
   }
 
@@ -57,9 +58,11 @@ export function createAuthorizationBridge(options: AuthorizationBridgeOptions) {
       return;
     }
     request.resolved = true;
+    resolvedRequests.add(notificationId);
+    pending.delete(notificationId);
     options.notifications.markRead(notificationId);
     request.resolve({ notificationId, deviceId: input.deviceId, decision: input.decision });
   }
 
-  return { createPermissionRequest, resolve };
+  return { createPermissionRequest, resolve, pendingCount: () => pending.size };
 }
