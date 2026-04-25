@@ -8,6 +8,7 @@ import { BoundedOutputBuffer } from "./output-buffer.js";
 import { replayOutput } from "./replay-service.js";
 
 interface HarnessOptions {
+  readonly auth?: BootstrapPairingService;
   readonly now?: () => Date;
   readonly outputBufferBytes?: number;
   readonly ptyScript?: readonly string[];
@@ -53,7 +54,7 @@ class ScriptedPtyHarness {
 }
 
 export async function createRemoteTerminalSessionHarness(options: HarnessOptions = {}) {
-  const auth = createBootstrapPairingService(
+  const auth = options.auth ?? createBootstrapPairingService(
     options.now === undefined ? {} : { now: options.now },
   );
   const pty = new ScriptedPtyHarness();
@@ -71,6 +72,8 @@ function createHarnessSessionService(
   const deviceInstances = new Map<DeviceId, string>();
   const seenInstances = new Set<string>();
   const latestByInstance = new Map<string, string>();
+  const instanceNames = new Map<string, string>();
+  const stoppedInstances = new Set<string>();
   const capacity = options.outputBufferBytes ?? 1024 * 1024;
   const inputQueue = createInputQueue(
     options.now === undefined ? {} : { now: options.now },
@@ -86,9 +89,39 @@ function createHarnessSessionService(
   }
 
   return {
+    async createInstance(input: { readonly device_id: string; readonly access_token: string; readonly name: string; readonly cwd: string }) {
+      await auth.verifyDeviceToken({ device_id: input.device_id, access_token: input.access_token });
+      const instanceId = crypto.randomUUID();
+      deviceInstances.set(input.device_id, instanceId);
+      instanceNames.set(instanceId, input.name);
+      getBuffer(instanceId);
+      seenInstances.add(instanceId);
+      return {
+        id: instanceId,
+        name: input.name,
+        status: "running",
+        cwd: input.cwd,
+      };
+    },
+    listInstances() {
+      return [...buffers.keys()].map((instanceId) => ({
+        id: instanceId,
+        name: instanceNames.get(instanceId) ?? instanceId,
+        status: stoppedInstances.has(instanceId) ? "exited" : "running",
+      }));
+    },
+    async stopInstance(input: { readonly device_id: string; readonly access_token: string; readonly instance_id: string }) {
+      await auth.verifyDeviceToken({ device_id: input.device_id, access_token: input.access_token });
+      stoppedInstances.add(input.instance_id);
+      return {
+        id: input.instance_id,
+        status: "exited",
+      };
+    },
     async attachTerminal(input: AttachTerminalInput) {
       await auth.verifyDeviceToken({ device_id: input.device_id, access_token: input.access_token });
       const instanceId = input.instance_id ?? deviceInstances.get(input.device_id) ?? crypto.randomUUID();
+      instanceNames.set(instanceId, instanceNames.get(instanceId) ?? "Claude Code");
       deviceInstances.set(input.device_id, instanceId);
 
       const buffer = getBuffer(instanceId);

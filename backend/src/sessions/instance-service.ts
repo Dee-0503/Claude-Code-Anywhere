@@ -18,7 +18,7 @@ export function createInstanceService(options: InstanceServiceOptions = {}) {
   const processes = new Map<ClaudeInstanceId, PtyProcess>();
   const now = options.now ?? (() => new Date());
 
-  function startInstance(input: { cwd: string; createdByDeviceId: DeviceId; instanceId?: ClaudeInstanceId }): StartedInstance {
+  function startInstance(input: { cwd: string; createdByDeviceId: DeviceId; instanceId?: ClaudeInstanceId; name?: string }): StartedInstance {
     if (input.instanceId !== undefined) {
       const existing = repository.get(input.instanceId);
       if (existing !== undefined) {
@@ -32,6 +32,7 @@ export function createInstanceService(options: InstanceServiceOptions = {}) {
     }
 
     const instance = repository.create({
+      ...(input.name === undefined ? {} : { name: input.name }),
       cwd: input.cwd,
       createdByDeviceId: input.createdByDeviceId,
       ptyPid: process?.pid ?? null,
@@ -52,7 +53,23 @@ export function createInstanceService(options: InstanceServiceOptions = {}) {
     return processes.get(instanceId);
   }
 
-  return { startInstance, getInstance, getProcess, repository };
+  function stopInstance(instanceId: ClaudeInstanceId): ClaudeInstance | undefined {
+    const instance = repository.get(instanceId);
+    if (instance === undefined) {
+      return undefined;
+    }
+    const updated: ClaudeInstance = {
+      ...instance,
+      status: "exited",
+      exitedAt: now().toISOString(),
+    };
+    const process = processes.get(instanceId);
+    process?.kill();
+    processes.delete(instanceId);
+    return repository.update(updated);
+  }
+
+  return { startInstance, getInstance, getProcess, stopInstance, repository };
 }
 
 export type InstanceService = ReturnType<typeof createInstanceService>;
