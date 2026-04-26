@@ -1,5 +1,5 @@
-import type { DeviceId } from "../../../shared/protocol/domain.js";
-import type { AdminService } from "../auth/admin-service.js";
+import type { DeviceId } from '../../../shared/protocol/domain.js';
+import type { AdminService } from '../auth/admin-service.js';
 
 export interface DeviceApiOptions {
   readonly admin: AdminService;
@@ -24,7 +24,7 @@ export function createDeviceApi(options: DeviceApiOptions) {
     async listDevices(input: AuthenticatedDeviceManagementRequest) {
       const devices = await options.admin.listDevices({
         admin_device_id: input.device_id,
-        access_token: input.access_token,
+        access_token: input.access_token
       });
       return {
         devices: devices.map((device) => ({
@@ -33,8 +33,8 @@ export function createDeviceApi(options: DeviceApiOptions) {
           role: device.role,
           created_at: device.createdAt,
           last_seen_at: device.lastSeenAt,
-          revoked_at: device.revokedAt,
-        })),
+          revoked_at: device.revokedAt
+        }))
       };
     },
     async revokeDevice(input: TargetDeviceRequest) {
@@ -42,6 +42,6 @@ export function createDeviceApi(options: DeviceApiOptions) {
     },
     async transferAdmin(input: TargetDeviceRequest) {
       return options.admin.transferAdmin(input);
-    },
+    }
   };
 }

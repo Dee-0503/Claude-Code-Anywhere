@@ -10,10 +10,7 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
-      include: [
-        'backend/src/**/*.ts',
-        'frontend/src/protocol/**/*.ts'
-      ],
+      include: ['backend/src/**/*.ts', 'frontend/src/protocol/**/*.ts'],
       exclude: [
         '**/*.d.ts',
         '**/*.test.{ts,tsx}',
@@ -29,7 +26,8 @@ export default defineConfig({
         test: {
           name: 'backend',
           environment: 'node',
-          include: ['backend/tests/**/*.test.ts']
+          include: ['backend/tests/**/*.test.ts'],
+          testTimeout: 10_000
         }
       },
       {

@@ -1,5 +1,10 @@
-import type { InputMessageId } from "../../../shared/protocol/domain.js";
-import { INPUT_ACK_STATUSES, SERVER_MESSAGE_TYPES, type InputAckMessagePayload, type ServerToClientMessage } from "../../../shared/protocol/messages.js";
+import type { InputMessageId } from '../../../shared/protocol/domain.js';
+import {
+  INPUT_ACK_STATUSES,
+  SERVER_MESSAGE_TYPES,
+  type InputAckMessagePayload,
+  type ServerToClientMessage
+} from '../../../shared/protocol/messages.js';
 
 export interface PendingInput {
   readonly inputId: InputMessageId;
@@ -22,7 +27,9 @@ export interface InputRecoveryClientOptions {
 
 export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
   const retryAfterMs = options.retryAfterMs ?? 3_000;
-  const createInputId = options.createInputId ?? (() => `${options.deviceId}:${Date.now()}:${Math.random().toString(36).slice(2)}`);
+  const createInputId =
+    options.createInputId ??
+    (() => `${options.deviceId}:${Date.now()}:${Math.random().toString(36).slice(2)}`);
   const pendingInputs = new Map<InputMessageId, PendingInput>();
   let online = true;
 
@@ -30,11 +37,15 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
     options.transport.sendInput({
       instanceId: options.instanceId,
       inputId: input.inputId,
-      payload: input.payload,
+      payload: input.payload
     });
     pendingInputs.set(input.inputId, { ...input, sent: true });
     window.setTimeout(() => {
-      if (pendingInputs.has(input.inputId) && online && !pendingInputs.get(input.inputId)!.awaitingConfirmation) {
+      if (
+        pendingInputs.has(input.inputId) &&
+        online &&
+        !pendingInputs.get(input.inputId)!.awaitingConfirmation
+      ) {
         transmit(pendingInputs.get(input.inputId)!);
       }
     }, retryAfterMs);
@@ -45,7 +56,7 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
       inputId: createInputId(),
       payload,
       sent: false,
-      awaitingConfirmation: false,
+      awaitingConfirmation: false
     };
     pendingInputs.set(input.inputId, input);
     if (online) {
@@ -83,7 +94,9 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
   function confirmReplay(): void {
     online = true;
     for (const input of pendingInputs.values()) {
-      transmit(input);
+      if (!input.sent) {
+        transmit(input);
+      }
     }
   }
 

@@ -1,5 +1,5 @@
-import type { PtyAdapter, PtyProcess, PtySpawnOptions } from "./pty-adapter.js";
-import { validatePtySize } from "./pty-adapter.js";
+import type { PtyAdapter, PtyProcess, PtySpawnOptions } from './pty-adapter.js';
+import { validatePtySize } from './pty-adapter.js';
 
 export class NodePtyAdapter implements PtyAdapter {
   spawn(options: PtySpawnOptions): PtyProcess {
@@ -7,7 +7,7 @@ export class NodePtyAdapter implements PtyAdapter {
     validatePtySize(size);
 
     throw new Error(
-      "NodePtyAdapter requires node-pty runtime wiring; use a test adapter or install runtime integration before production use",
+      'NodePtyAdapter requires node-pty runtime wiring; use a test adapter or install runtime integration before production use'
     );
   }
 }

@@ -11,14 +11,14 @@
 
 **Purpose**: Initialize the TypeScript web application structure and baseline tooling.
 
-- [X] T001 Create backend, frontend, shared, and test directories per plan in `backend/`, `frontend/`, and `shared/`
-- [X] T002 Initialize root TypeScript workspace and package metadata in `package.json`, `tsconfig.json`, and `tsconfig.base.json`
-- [X] T003 [P] Configure backend TypeScript ESM settings in `backend/tsconfig.json`
-- [X] T004 [P] Configure frontend TypeScript ESM settings in `frontend/tsconfig.json`
-- [X] T005 [P] Configure shared protocol package settings in `shared/tsconfig.json`
-- [X] T006 Configure Vitest test runner for backend, frontend, and shared packages in `vitest.config.ts`
-- [X] T007 Configure linting and formatting baseline in `eslint.config.js` and `.prettierrc.json`
-- [X] T008 Update root `.gitignore` with Node.js, TypeScript, build, coverage, log, and env patterns in `.gitignore`
+- [x] T001 Create backend, frontend, shared, and test directories per plan in `backend/`, `frontend/`, and `shared/`
+- [x] T002 Initialize root TypeScript workspace and package metadata in `package.json`, `tsconfig.json`, and `tsconfig.base.json`
+- [x] T003 [P] Configure backend TypeScript ESM settings in `backend/tsconfig.json`
+- [x] T004 [P] Configure frontend TypeScript ESM settings in `frontend/tsconfig.json`
+- [x] T005 [P] Configure shared protocol package settings in `shared/tsconfig.json`
+- [x] T006 Configure Vitest test runner for backend, frontend, and shared packages in `vitest.config.ts`
+- [x] T007 Configure linting and formatting baseline in `eslint.config.js` and `.prettierrc.json`
+- [x] T008 Update root `.gitignore` with Node.js, TypeScript, build, coverage, log, and env patterns in `.gitignore`
 
 ---
 
@@ -28,18 +28,18 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [X] T009 Define shared WebSocket message types and error codes in `shared/protocol/messages.ts` and `shared/protocol/errors.ts`
-- [X] T010 Define shared domain types for Device, PairingCode, ClaudeInstance, OutputBuffer, InputMessage, ClientConnection, and NotificationEvent in `shared/protocol/domain.ts`
-- [X] T011 Create SQLite connection and migration runner in `backend/src/db/connection.ts` and `backend/src/db/migrations.ts`
-- [X] T012 Create initial SQLite schema for devices, pairing codes, instances, input messages, connections, and notifications in `backend/src/db/schema.sql`
-- [X] T013 Implement configuration loading for host, port, database path, TLS mode, and buffer limits in `backend/src/config.ts`
-- [X] T014 Implement structured error helpers and request validation utilities in `backend/src/api/errors.ts` and `backend/src/api/validation.ts`
-- [X] T015 Implement token hashing and verification utilities in `backend/src/auth/tokens.ts`
-- [X] T016 Implement WebSocket server bootstrap and connection registry in `backend/src/api/websocket-server.ts`
-- [X] T017 Implement PTY process adapter interface in `backend/src/pty/pty-adapter.ts`
-- [X] T018 Implement bounded output ring buffer in `backend/src/sessions/output-buffer.ts`
-- [X] T019 Create frontend protocol client foundation in `frontend/src/protocol/client.ts`
-- [X] T020 Create frontend app shell and routing foundation in `frontend/src/pages/App.tsx`
+- [x] T009 Define shared WebSocket message types and error codes in `shared/protocol/messages.ts` and `shared/protocol/errors.ts`
+- [x] T010 Define shared domain types for Device, PairingCode, ClaudeInstance, OutputBuffer, InputMessage, ClientConnection, and NotificationEvent in `shared/protocol/domain.ts`
+- [x] T011 Create SQLite connection and migration runner in `backend/src/db/connection.ts` and `backend/src/db/migrations.ts`
+- [x] T012 Create initial SQLite schema for devices, pairing codes, instances, input messages, connections, and notifications in `backend/src/db/schema.sql`
+- [x] T013 Implement configuration loading for host, port, database path, TLS mode, and buffer limits in `backend/src/config.ts`
+- [x] T014 Implement structured error helpers and request validation utilities in `backend/src/api/errors.ts` and `backend/src/api/validation.ts`
+- [x] T015 Implement token hashing and verification utilities in `backend/src/auth/tokens.ts`
+- [x] T016 Implement WebSocket server bootstrap and connection registry in `backend/src/api/websocket-server.ts`
+- [x] T017 Implement PTY process adapter interface in `backend/src/pty/pty-adapter.ts`
+- [x] T018 Implement bounded output ring buffer in `backend/src/sessions/output-buffer.ts`
+- [x] T019 Create frontend protocol client foundation in `frontend/src/protocol/client.ts`
+- [x] T020 Create frontend app shell and routing foundation in `frontend/src/pages/App.tsx`
 
 **Checkpoint**: Foundation ready; user story implementation can now begin in priority order.
 
@@ -53,24 +53,24 @@
 
 ### Tests for User Story 1
 
-- [X] T021 [P] [US1] Add contract tests for bootstrap pairing and device token verification in `backend/tests/contract/auth-pairing.test.ts`
-- [X] T022 [P] [US1] Add contract tests for WebSocket hello, output, ack_output, and output_gap messages in `backend/tests/contract/websocket-protocol.test.ts`
-- [X] T023 [P] [US1] Add unit tests for output replay and 1MB gap behavior in `backend/tests/unit/output-buffer.test.ts`
-- [X] T024 [P] [US1] Add integration test for first-device pairing and terminal attach flow in `backend/tests/integration/remote-terminal-session.test.ts`
+- [x] T021 [P] [US1] Add contract tests for bootstrap pairing and device token verification in `backend/tests/contract/auth-pairing.test.ts`
+- [x] T022 [P] [US1] Add contract tests for WebSocket hello, output, ack_output, and output_gap messages in `backend/tests/contract/websocket-protocol.test.ts`
+- [x] T023 [P] [US1] Add unit tests for output replay and 1MB gap behavior in `backend/tests/unit/output-buffer.test.ts`
+- [x] T024 [P] [US1] Add integration test for first-device pairing and terminal attach flow in `backend/tests/integration/remote-terminal-session.test.ts`
 
 ### Implementation for User Story 1
 
-- [X] T025 [US1] Implement device and pairing repositories in `backend/src/auth/device-repository.ts` and `backend/src/auth/pairing-repository.ts`
-- [X] T026 [US1] Implement bootstrap pairing service in `backend/src/auth/pairing-service.ts`
-- [X] T027 [US1] Implement authenticated WebSocket handshake in `backend/src/api/websocket-auth.ts`
-- [X] T028 [US1] Implement Claude Code PTY launcher using node-pty in `backend/src/pty/node-pty-adapter.ts`
-- [X] T029 [US1] Implement Claude instance repository and service in `backend/src/sessions/instance-repository.ts` and `backend/src/sessions/instance-service.ts`
-- [X] T030 [US1] Wire PTY output to output buffer and WebSocket `output` messages in `backend/src/sessions/output-stream.ts`
-- [X] T031 [US1] Implement reconnect replay and `output_gap` handling in `backend/src/sessions/replay-service.ts`
-- [X] T032 [US1] Implement browser pairing screen in `frontend/src/pages/PairingPage.tsx`
-- [X] T033 [US1] Implement xterm.js terminal view in `frontend/src/terminal/TerminalView.tsx`
-- [X] T034 [US1] Implement frontend reconnect offset persistence in `frontend/src/protocol/reconnect.ts`
-- [X] T035 [US1] Connect app shell to pairing and terminal routes in `frontend/src/pages/App.tsx`
+- [x] T025 [US1] Implement device and pairing repositories in `backend/src/auth/device-repository.ts` and `backend/src/auth/pairing-repository.ts`
+- [x] T026 [US1] Implement bootstrap pairing service in `backend/src/auth/pairing-service.ts`
+- [x] T027 [US1] Implement authenticated WebSocket handshake in `backend/src/api/websocket-auth.ts`
+- [x] T028 [US1] Implement Claude Code PTY launcher using node-pty in `backend/src/pty/node-pty-adapter.ts`
+- [x] T029 [US1] Implement Claude instance repository and service in `backend/src/sessions/instance-repository.ts` and `backend/src/sessions/instance-service.ts`
+- [x] T030 [US1] Wire PTY output to output buffer and WebSocket `output` messages in `backend/src/sessions/output-stream.ts`
+- [x] T031 [US1] Implement reconnect replay and `output_gap` handling in `backend/src/sessions/replay-service.ts`
+- [x] T032 [US1] Implement browser pairing screen in `frontend/src/pages/PairingPage.tsx`
+- [x] T033 [US1] Implement xterm.js terminal view in `frontend/src/terminal/TerminalView.tsx`
+- [x] T034 [US1] Implement frontend reconnect offset persistence in `frontend/src/protocol/reconnect.ts`
+- [x] T035 [US1] Connect app shell to pairing and terminal routes in `frontend/src/pages/App.tsx`
 
 **Checkpoint**: MVP remote terminal is independently usable and recoverable after reconnect.
 
@@ -84,19 +84,19 @@
 
 ### Tests for User Story 2
 
-- [X] T036 [P] [US2] Add contract tests for input, input_ack, heartbeat, and connection_state messages in `backend/tests/contract/input-recovery.test.ts`
-- [X] T037 [P] [US2] Add unit tests for FIFO input queue and duplicate input IDs in `backend/tests/unit/input-queue.test.ts`
-- [X] T038 [P] [US2] Add integration test for degraded connection retry and reconnect confirmation in `backend/tests/integration/weak-network-input.test.ts`
+- [x] T036 [P] [US2] Add contract tests for input, input_ack, heartbeat, and connection_state messages in `backend/tests/contract/input-recovery.test.ts`
+- [x] T037 [P] [US2] Add unit tests for FIFO input queue and duplicate input IDs in `backend/tests/unit/input-queue.test.ts`
+- [x] T038 [P] [US2] Add integration test for degraded connection retry and reconnect confirmation in `backend/tests/integration/weak-network-input.test.ts`
 
 ### Implementation for User Story 2
 
-- [X] T039 [US2] Implement input message repository in `backend/src/sessions/input-repository.ts`
-- [X] T040 [US2] Implement FIFO input queue with idempotency in `backend/src/sessions/input-queue.ts`
-- [X] T041 [US2] Wire acknowledged input injection to PTY stdin in `backend/src/sessions/input-stream.ts`
-- [X] T042 [US2] Implement heartbeat timeout and connection state transitions in `backend/src/api/connection-state.ts`
-- [X] T043 [US2] Implement frontend input retry and duplicate suppression in `frontend/src/protocol/input-client.ts`
-- [X] T044 [US2] Implement degraded, disconnected, and reconnecting UI states in `frontend/src/components/ConnectionStatus.tsx`
-- [X] T045 [US2] Implement offline input confirmation UI in `frontend/src/components/OfflineInputConfirm.tsx`
+- [x] T039 [US2] Implement input message repository in `backend/src/sessions/input-repository.ts`
+- [x] T040 [US2] Implement FIFO input queue with idempotency in `backend/src/sessions/input-queue.ts`
+- [x] T041 [US2] Wire acknowledged input injection to PTY stdin in `backend/src/sessions/input-stream.ts`
+- [x] T042 [US2] Implement heartbeat timeout and connection state transitions in `backend/src/api/connection-state.ts`
+- [x] T043 [US2] Implement frontend input retry and duplicate suppression in `frontend/src/protocol/input-client.ts`
+- [x] T044 [US2] Implement degraded, disconnected, and reconnecting UI states in `frontend/src/components/ConnectionStatus.tsx`
+- [x] T045 [US2] Implement offline input confirmation UI in `frontend/src/components/OfflineInputConfirm.tsx`
 
 **Checkpoint**: Input remains safe and recoverable under weak network conditions.
 
@@ -110,16 +110,16 @@
 
 ### Tests for User Story 3
 
-- [X] T046 [P] [US3] Add unit tests for notification priority routing in `backend/tests/unit/notification-routing.test.ts`
-- [X] T047 [P] [US3] Add integration test for permission request approval flow in `backend/tests/integration/authorization-loop.test.ts`
+- [x] T046 [P] [US3] Add unit tests for notification priority routing in `backend/tests/unit/notification-routing.test.ts`
+- [x] T047 [P] [US3] Add integration test for permission request approval flow in `backend/tests/integration/authorization-loop.test.ts`
 
 ### Implementation for User Story 3
 
-- [X] T048 [US3] Implement notification repository in `backend/src/notifications/notification-repository.ts`
-- [X] T049 [US3] Implement notification routing and escalation service in `backend/src/notifications/notification-service.ts`
-- [X] T050 [US3] Implement terminal authorization event bridge in `backend/src/notifications/authorization-bridge.ts`
-- [X] T051 [US3] Implement notification center UI in `frontend/src/components/NotificationCenter.tsx`
-- [X] T052 [US3] Implement authorization approval prompt UI in `frontend/src/components/AuthorizationPrompt.tsx`
+- [x] T048 [US3] Implement notification repository in `backend/src/notifications/notification-repository.ts`
+- [x] T049 [US3] Implement notification routing and escalation service in `backend/src/notifications/notification-service.ts`
+- [x] T050 [US3] Implement terminal authorization event bridge in `backend/src/notifications/authorization-bridge.ts`
+- [x] T051 [US3] Implement notification center UI in `frontend/src/components/NotificationCenter.tsx`
+- [x] T052 [US3] Implement authorization approval prompt UI in `frontend/src/components/AuthorizationPrompt.tsx`
 
 **Checkpoint**: Notification and authorization loop works independently of later multi-instance features.
 
@@ -133,16 +133,16 @@
 
 ### Tests for User Story 4
 
-- [X] T053 [P] [US4] Add contract tests for instance list, create, status, and stop operations in `backend/tests/contract/instance-api.test.ts`
-- [X] T054 [P] [US4] Add integration test for multi-device revocation and instance switching in `backend/tests/integration/multi-device-instance.test.ts`
+- [x] T053 [P] [US4] Add contract tests for instance list, create, status, and stop operations in `backend/tests/contract/instance-api.test.ts`
+- [x] T054 [P] [US4] Add integration test for multi-device revocation and instance switching in `backend/tests/integration/multi-device-instance.test.ts`
 
 ### Implementation for User Story 4
 
-- [X] T055 [US4] Implement instance API handlers in `backend/src/api/instance-routes.ts`
-- [X] T056 [US4] Implement device management API handlers in `backend/src/api/device-routes.ts`
-- [X] T057 [US4] Implement admin transfer and device revocation logic in `backend/src/auth/admin-service.ts`
-- [X] T058 [US4] Implement instance switcher UI in `frontend/src/components/InstanceSwitcher.tsx`
-- [X] T059 [US4] Implement device management UI in `frontend/src/components/DeviceManager.tsx`
+- [x] T055 [US4] Implement instance API handlers in `backend/src/api/instance-routes.ts`
+- [x] T056 [US4] Implement device management API handlers in `backend/src/api/device-routes.ts`
+- [x] T057 [US4] Implement admin transfer and device revocation logic in `backend/src/auth/admin-service.ts`
+- [x] T058 [US4] Implement instance switcher UI in `frontend/src/components/InstanceSwitcher.tsx`
+- [x] T059 [US4] Implement device management UI in `frontend/src/components/DeviceManager.tsx`
 
 **Checkpoint**: Multiple devices and instances are manageable through authenticated UI flows.
 
@@ -156,16 +156,16 @@
 
 ### Tests for User Story 5
 
-- [X] T060 [P] [US5] Add unit tests for multi-client FIFO ordering and cancellation in `backend/tests/unit/multi-client-input.test.ts`
-- [X] T061 [P] [US5] Add integration test for two-client same-instance coordination in `backend/tests/integration/multi-client-coordination.test.ts`
+- [x] T060 [P] [US5] Add unit tests for multi-client FIFO ordering and cancellation in `backend/tests/unit/multi-client-input.test.ts`
+- [x] T061 [P] [US5] Add integration test for two-client same-instance coordination in `backend/tests/integration/multi-client-coordination.test.ts`
 
 ### Implementation for User Story 5
 
-- [X] T062 [US5] Extend input queue with cancellation and interrupt classification in `backend/src/sessions/input-queue.ts`
-- [X] T063 [US5] Implement multi-client presence broadcast in `backend/src/sessions/presence-service.ts`
-- [X] T064 [US5] Implement queued input visibility messages in `shared/protocol/messages.ts`
-- [X] T065 [US5] Implement queued input UI and cancel action in `frontend/src/components/InputQueuePanel.tsx`
-- [X] T066 [US5] Implement explicit Ctrl+C confirmation UI in `frontend/src/components/InterruptConfirm.tsx`
+- [x] T062 [US5] Extend input queue with cancellation and interrupt classification in `backend/src/sessions/input-queue.ts`
+- [x] T063 [US5] Implement multi-client presence broadcast in `backend/src/sessions/presence-service.ts`
+- [x] T064 [US5] Implement queued input visibility messages in `shared/protocol/messages.ts`
+- [x] T065 [US5] Implement queued input UI and cancel action in `frontend/src/components/InputQueuePanel.tsx`
+- [x] T066 [US5] Implement explicit Ctrl+C confirmation UI in `frontend/src/components/InterruptConfirm.tsx`
 
 **Checkpoint**: Multi-client viewing and input coordination are independently verifiable.
 
@@ -179,14 +179,14 @@
 
 ### Tests for User Story 6
 
-- [X] T067 [P] [US6] Add frontend unit tests for mobile shortcut and paste confirmation behavior in `frontend/tests/unit/mobile-input.test.tsx`
+- [x] T067 [P] [US6] Add frontend unit tests for mobile shortcut and paste confirmation behavior in `frontend/tests/unit/mobile-input.test.tsx`
 
 ### Implementation for User Story 6
 
-- [X] T068 [US6] Implement mobile command shortcut bar in `frontend/src/components/MobileShortcutBar.tsx`
-- [X] T069 [US6] Implement command template picker in `frontend/src/components/CommandTemplatePicker.tsx`
-- [X] T070 [US6] Implement paste confirmation flow in `frontend/src/components/PasteConfirm.tsx`
-- [X] T071 [US6] Implement optional speech-to-text input adapter boundary in `frontend/src/services/speechInput.ts`
+- [x] T068 [US6] Implement mobile command shortcut bar in `frontend/src/components/MobileShortcutBar.tsx`
+- [x] T069 [US6] Implement command template picker in `frontend/src/components/CommandTemplatePicker.tsx`
+- [x] T070 [US6] Implement paste confirmation flow in `frontend/src/components/PasteConfirm.tsx`
+- [x] T071 [US6] Implement optional speech-to-text input adapter boundary in `frontend/src/services/speechInput.ts`
 
 **Checkpoint**: Mobile input helpers operate without changing backend terminal semantics.
 
@@ -200,15 +200,15 @@
 
 ### Tests for User Story 7
 
-- [X] T072 [P] [US7] Add frontend unit tests for terminal scaling calculations in `frontend/tests/unit/terminal-scaling.test.ts`
-- [X] T073 [P] [US7] Add frontend integration test for search and scroll behavior in `frontend/tests/integration/terminal-display.test.tsx`
+- [x] T072 [P] [US7] Add frontend unit tests for terminal scaling calculations in `frontend/tests/unit/terminal-scaling.test.ts`
+- [x] T073 [P] [US7] Add frontend integration test for search and scroll behavior in `frontend/tests/integration/terminal-display.test.tsx`
 
 ### Implementation for User Story 7
 
-- [X] T074 [US7] Implement fixed 120-column scaling helper in `frontend/src/terminal/scaling.ts`
-- [X] T075 [US7] Integrate scaling helper into terminal view in `frontend/src/terminal/TerminalView.tsx`
-- [X] T076 [US7] Implement terminal search UI in `frontend/src/components/TerminalSearch.tsx`
-- [X] T077 [US7] Optimize terminal output append and scroll handling in `frontend/src/terminal/outputRenderer.ts`
+- [x] T074 [US7] Implement fixed 120-column scaling helper in `frontend/src/terminal/scaling.ts`
+- [x] T075 [US7] Integrate scaling helper into terminal view in `frontend/src/terminal/TerminalView.tsx`
+- [x] T076 [US7] Implement terminal search UI in `frontend/src/components/TerminalSearch.tsx`
+- [x] T077 [US7] Optimize terminal output append and scroll handling in `frontend/src/terminal/outputRenderer.ts`
 
 **Checkpoint**: Display consistency is validated without altering backend PTY behavior.
 
@@ -222,15 +222,15 @@
 
 ### Tests for User Story 8
 
-- [X] T078 [P] [US8] Add unit tests for teammate session detection mapping in `backend/tests/unit/team-detection.test.ts`
-- [X] T079 [P] [US8] Add frontend integration test for team tabs and deep-link behavior in `frontend/tests/integration/team-visualization.test.tsx`
+- [x] T078 [P] [US8] Add unit tests for teammate session detection mapping in `backend/tests/unit/team-detection.test.ts`
+- [x] T079 [P] [US8] Add frontend integration test for team tabs and deep-link behavior in `frontend/tests/integration/team-visualization.test.tsx`
 
 ### Implementation for User Story 8
 
-- [X] T080 [US8] Implement teammate session detector boundary in `backend/src/sessions/team-detector.ts`
-- [X] T081 [US8] Extend instance metadata with teammate grouping in `shared/protocol/domain.ts`
-- [X] T082 [US8] Implement team tab and pane UI in `frontend/src/components/TeamWorkspace.tsx`
-- [X] T083 [US8] Implement instance deep-link routing in `frontend/src/pages/App.tsx`
+- [x] T080 [US8] Implement teammate session detector boundary in `backend/src/sessions/team-detector.ts`
+- [x] T081 [US8] Extend instance metadata with teammate grouping in `shared/protocol/domain.ts`
+- [x] T082 [US8] Implement team tab and pane UI in `frontend/src/components/TeamWorkspace.tsx`
+- [x] T083 [US8] Implement instance deep-link routing in `frontend/src/pages/App.tsx`
 
 **Checkpoint**: Team visualization is isolated from MVP terminal transport and can be enabled later.
 
@@ -240,12 +240,12 @@
 
 **Purpose**: Validate security, performance, docs, and phase readiness.
 
-- [X] T084 [P] Add security tests for revoked devices, expired pairing codes, and token hash verification in `backend/tests/security/auth-security.test.ts`
-- [X] T085 [P] Add performance test for output streaming and 1MB ring buffer behavior in `backend/tests/performance/output-streaming.test.ts`
-- [X] T086 Run quickstart scenario validation and record results in `specs/001-remote-terminal/quickstart.md`
-- [X] T087 Verify coverage for core backend modules and frontend protocol modules in `vitest.config.ts`
-- [X] T088 Audit production WSS/TLS configuration guidance in `backend/src/config.ts`
-- [X] T089 Review spec-kit artifacts for consistency with implementation in `specs/001-remote-terminal/`
+- [x] T084 [P] Add security tests for revoked devices, expired pairing codes, and token hash verification in `backend/tests/security/auth-security.test.ts`
+- [x] T085 [P] Add performance test for output streaming and 1MB ring buffer behavior in `backend/tests/performance/output-streaming.test.ts`
+- [x] T086 Run quickstart scenario validation and record results in `specs/001-remote-terminal/quickstart.md`
+- [x] T087 Verify coverage for core backend modules and frontend protocol modules in `vitest.config.ts`
+- [x] T088 Audit production WSS/TLS configuration guidance in `backend/src/config.ts`
+- [x] T089 Review spec-kit artifacts for consistency with implementation in `specs/001-remote-terminal/`
 
 ---
 

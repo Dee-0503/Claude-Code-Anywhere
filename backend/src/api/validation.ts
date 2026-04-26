@@ -1,30 +1,26 @@
-import { invalidRequest } from "./errors.js";
+import { invalidRequest } from './errors.js';
 
 export type Validator<T> = (value: unknown) => value is T;
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 export function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
 export function isIsoDateString(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.trim().length > 0 &&
-    !Number.isNaN(Date.parse(value))
-  );
+  return typeof value === 'string' && value.trim().length > 0 && !Number.isNaN(Date.parse(value));
 }
 
 export function requireRecord(
   value: unknown,
-  message = "Request body must be an object",
+  message = 'Request body must be an object'
 ): Record<string, unknown> {
   if (!isRecord(value)) {
     throw invalidRequest(message);
@@ -33,10 +29,7 @@ export function requireRecord(
   return value;
 }
 
-export function requireStringField(
-  source: Record<string, unknown>,
-  field: string,
-): string {
+export function requireStringField(source: Record<string, unknown>, field: string): string {
   const value = source[field];
   if (!isNonEmptyString(value)) {
     throw invalidRequest(`${field} must be a non-empty string`, { field });
@@ -47,7 +40,7 @@ export function requireStringField(
 
 export function requireNonNegativeIntegerField(
   source: Record<string, unknown>,
-  field: string,
+  field: string
 ): number {
   const value = source[field];
   if (!isNonNegativeInteger(value)) {
@@ -59,7 +52,7 @@ export function requireNonNegativeIntegerField(
 
 export function optionalStringField(
   source: Record<string, unknown>,
-  field: string,
+  field: string
 ): string | undefined {
   const value = source[field];
   if (value === undefined || value === null) {
@@ -76,13 +69,13 @@ export function optionalStringField(
 export function requireEnumField<T extends string>(
   source: Record<string, unknown>,
   field: string,
-  allowedValues: readonly T[],
+  allowedValues: readonly T[]
 ): T {
   const value = source[field];
-  if (typeof value !== "string" || !allowedValues.includes(value as T)) {
-    throw invalidRequest(`${field} must be one of: ${allowedValues.join(", ")}`, {
+  if (typeof value !== 'string' || !allowedValues.includes(value as T)) {
+    throw invalidRequest(`${field} must be one of: ${allowedValues.join(', ')}`, {
       field,
-      allowedValues,
+      allowedValues
     });
   }
 
@@ -92,7 +85,7 @@ export function requireEnumField<T extends string>(
 export function validateRequest<T>(
   value: unknown,
   validator: Validator<T>,
-  message = "Invalid request",
+  message = 'Invalid request'
 ): T {
   if (!validator(value)) {
     throw invalidRequest(message);
@@ -106,7 +99,7 @@ export function parseJsonObject(input: string): Record<string, unknown> {
     return requireRecord(JSON.parse(input));
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw invalidRequest("Request body must be valid JSON");
+      throw invalidRequest('Request body must be valid JSON');
     }
 
     throw error;

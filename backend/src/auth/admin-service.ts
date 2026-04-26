@@ -1,7 +1,7 @@
-import { DEVICE_ROLES, type Device, type DeviceId } from "../../../shared/protocol/domain.js";
-import { createApiError } from "../api/errors.js";
-import type { BootstrapPairingService } from "./pairing-service.js";
-import type { DeviceRepository } from "./device-repository.js";
+import { DEVICE_ROLES, type Device, type DeviceId } from '../../../shared/protocol/domain.js';
+import { createApiError } from '../api/errors.js';
+import type { BootstrapPairingService } from './pairing-service.js';
+import type { DeviceRepository } from './device-repository.js';
 
 export interface AdminServiceOptions {
   readonly auth: BootstrapPairingService;
@@ -28,10 +28,10 @@ export function createAdminService(options: AdminServiceOptions) {
   async function authenticateAdmin(input: AdminAuthenticatedRequest): Promise<Device> {
     const admin = await options.auth.verifyDeviceToken({
       device_id: input.admin_device_id,
-      access_token: input.access_token,
+      access_token: input.access_token
     });
     if (admin.role !== DEVICE_ROLES.ADMIN) {
-      throw adminError("ADMIN_REQUIRED", "Admin device required");
+      throw adminError('ADMIN_REQUIRED', 'Admin device required');
     }
     return admin;
   }
@@ -50,7 +50,7 @@ export function createAdminService(options: AdminServiceOptions) {
       await authenticateAdmin(input);
       const target = options.devices.getById(input.target_device_id);
       if (target === undefined || target.revokedAt !== null) {
-        throw adminError("INVALID_DEVICE_TOKEN", "Target device is not active");
+        throw adminError('INVALID_DEVICE_TOKEN', 'Target device is not active');
       }
       for (const device of options.devices.list()) {
         if (device.role === DEVICE_ROLES.ADMIN) {
@@ -59,7 +59,7 @@ export function createAdminService(options: AdminServiceOptions) {
       }
       options.devices.updateRole(input.target_device_id, DEVICE_ROLES.ADMIN);
       return { new_admin_device_id: input.target_device_id };
-    },
+    }
   };
 }
 

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import type { ChangeEvent, ReactElement } from "react";
+import { useMemo, useState } from 'react';
+import type { ChangeEvent, ReactElement } from 'react';
 
 export interface TerminalSearchMatch {
   readonly index: number;
@@ -20,7 +20,11 @@ export function countTerminalSearchMatches(output: string, query: string): numbe
   return output.split(query).length - 1;
 }
 
-export function locateTerminalSearchMatch(output: string, query: string, index: number): TerminalSearchMatch {
+export function locateTerminalSearchMatch(
+  output: string,
+  query: string,
+  index: number
+): TerminalSearchMatch {
   const total = countTerminalSearchMatches(output, query);
 
   if (total === 0) {
@@ -40,7 +44,7 @@ export function locateTerminalSearchMatch(output: string, query: string, index: 
 }
 
 export function TerminalSearch({ output, onMatchChange }: TerminalSearchProps): ReactElement {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const matchCount = useMemo(() => countTerminalSearchMatches(output, query), [output, query]);
   const displayIndex = matchCount === 0 ? 0 : selectedIndex + 1;
@@ -65,9 +69,15 @@ export function TerminalSearch({ output, onMatchChange }: TerminalSearchProps): 
         搜索终端输出
         <input aria-label="搜索终端输出" onChange={handleChange} value={query} />
       </label>
-      <span>{displayIndex} / {matchCount}</span>
-      <button type="button" onClick={() => updateSelection(selectedIndex - 1)}>上一个</button>
-      <button type="button" onClick={() => updateSelection(selectedIndex + 1)}>下一个</button>
+      <span>
+        {displayIndex} / {matchCount}
+      </span>
+      <button type="button" onClick={() => updateSelection(selectedIndex - 1)}>
+        上一个
+      </button>
+      <button type="button" onClick={() => updateSelection(selectedIndex + 1)}>
+        下一个
+      </button>
     </section>
   );
 }

@@ -1,5 +1,8 @@
-import { SERVER_MESSAGE_TYPES, type OutputMessagePayload } from "../../../shared/protocol/messages.js";
-import type { BoundedOutputBuffer } from "./output-buffer.js";
+import {
+  SERVER_MESSAGE_TYPES,
+  type OutputMessagePayload
+} from '../../../shared/protocol/messages.js';
+import type { BoundedOutputBuffer } from './output-buffer.js';
 
 export type OutputSink = (message: OutputMessagePayload) => void;
 
@@ -19,7 +22,7 @@ export class OutputStream {
       type: SERVER_MESSAGE_TYPES.OUTPUT,
       instance_id: chunk.instanceId,
       offset: chunk.offset,
-      data: chunk.data,
+      data: chunk.data
     };
 
     for (const sink of this.sinks) {

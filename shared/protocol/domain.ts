@@ -1,4 +1,4 @@
-import type { ConnectionState } from "./messages.js";
+import type { ConnectionState } from './messages.js';
 
 export type ISODateTimeString = string;
 export type DeviceId = string;
@@ -9,8 +9,8 @@ export type InputMessageId = string;
 export type NotificationEventId = string;
 
 export const DEVICE_ROLES = {
-  ADMIN: "admin",
-  MEMBER: "member",
+  ADMIN: 'admin',
+  MEMBER: 'member'
 } as const;
 
 export type DeviceRole = (typeof DEVICE_ROLES)[keyof typeof DEVICE_ROLES];
@@ -35,10 +35,10 @@ export interface PairingCode {
 }
 
 export const CLAUDE_INSTANCE_STATUSES = {
-  IDLE: "idle",
-  RUNNING: "running",
-  EXITED: "exited",
-  ERROR: "error",
+  IDLE: 'idle',
+  RUNNING: 'running',
+  EXITED: 'exited',
+  ERROR: 'error'
 } as const;
 
 export type ClaudeInstanceStatus =
@@ -80,11 +80,11 @@ export interface OutputBuffer {
 }
 
 export const INPUT_MESSAGE_STATUSES = {
-  QUEUED: "queued",
-  INJECTED: "injected",
-  ACKED: "acked",
-  CANCELLED: "cancelled",
-  FAILED: "failed",
+  QUEUED: 'queued',
+  INJECTED: 'injected',
+  ACKED: 'acked',
+  CANCELLED: 'cancelled',
+  FAILED: 'failed'
 } as const;
 
 export type InputMessageStatus =
@@ -113,22 +113,22 @@ export interface ClientConnection {
 }
 
 export const NOTIFICATION_EVENT_TYPES = {
-  PERMISSION_REQUEST: "permission_request",
-  LONG_RUNNING_COMPLETE: "long_running_complete",
-  ERROR: "error",
-  MENTION: "mention",
-  INPUT_REQUIRED: "input_required",
+  PERMISSION_REQUEST: 'permission_request',
+  LONG_RUNNING_COMPLETE: 'long_running_complete',
+  ERROR: 'error',
+  MENTION: 'mention',
+  INPUT_REQUIRED: 'input_required'
 } as const;
 
 export type NotificationEventType =
   (typeof NOTIFICATION_EVENT_TYPES)[keyof typeof NOTIFICATION_EVENT_TYPES];
 
 export const NOTIFICATION_EVENT_STATUSES = {
-  PENDING: "pending",
-  DELIVERED: "delivered",
-  ESCALATED: "escalated",
-  READ: "read",
-  EXPIRED: "expired",
+  PENDING: 'pending',
+  DELIVERED: 'delivered',
+  ESCALATED: 'escalated',
+  READ: 'read',
+  EXPIRED: 'expired'
 } as const;
 
 export type NotificationEventStatus =
@@ -150,10 +150,10 @@ export interface NotificationEvent {
 }
 
 export const NOTIFICATION_PRIORITIES = {
-  LOW: "low",
-  NORMAL: "normal",
-  HIGH: "high",
-  URGENT: "urgent",
+  LOW: 'low',
+  NORMAL: 'normal',
+  HIGH: 'high',
+  URGENT: 'urgent'
 } as const;
 
 export type NotificationPriority =

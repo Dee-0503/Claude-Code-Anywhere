@@ -1,18 +1,45 @@
-import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent, ReactElement } from "react";
-import { Terminal } from "xterm";
+import { useEffect, useRef, useState } from 'react';
+import type { KeyboardEvent, ReactElement } from 'react';
+import { Terminal } from 'xterm';
 
-import { SERVER_MESSAGE_TYPES, type ConnectionState } from "../../../shared/protocol/messages.js";
-import type { ClaudeInstanceId, DeviceId, InputMessageId } from "../../../shared/protocol/domain.js";
-import { ConnectionStatus, type DisplayConnectionState } from "../components/ConnectionStatus.js";
-import { OfflineInputConfirm } from "../components/OfflineInputConfirm.js";
-import { TerminalSearch } from "../components/TerminalSearch.js";
-import { appendTerminalOutput, getTerminalOutputText, scrollTerminalOutput, type TerminalOutputState } from "./outputRenderer.js";
-import { calculateTerminalScale, createTerminalScaleObserver, measureTerminalCharacterWidth } from "./scaling.js";
-import type { ProtocolClient, ProtocolClientStatus } from "../protocol/client.js";
-import type { DeviceCredentials } from "../protocol/device-credentials.js";
-import { createInputRecoveryClient, type InputRecoveryClient, type PendingInput } from "../protocol/input-client.js";
-import { loadLastOutputOffset, saveLastOutputOffset } from "../protocol/reconnect.js";
+import {
+  SERVER_MESSAGE_TYPES,
+  INPUT_ACK_STATUSES,
+  type ConnectionState,
+  type InputAckMessagePayload
+} from '../../../shared/protocol/messages.js';
+import type {
+  ClaudeInstanceId,
+  DeviceId,
+  InputMessageId
+} from '../../../shared/protocol/domain.js';
+import { ConnectionStatus, type DisplayConnectionState } from '../components/ConnectionStatus.js';
+import { OfflineInputConfirm } from '../components/OfflineInputConfirm.js';
+import { TerminalSearch } from '../components/TerminalSearch.js';
+import {
+  appendTerminalOutput,
+  getTerminalOutputText,
+  scrollTerminalOutput,
+  type TerminalOutputState
+} from './outputRenderer.js';
+import {
+  calculateTerminalScale,
+  createTerminalScaleObserver,
+  measureTerminalCharacterWidth
+} from './scaling.js';
+import type { ProtocolClient, ProtocolClientStatus } from '../protocol/client.js';
+import type { DeviceCredentials } from '../protocol/device-credentials.js';
+import {
+  createInputRecoveryClient,
+  type InputRecoveryClient,
+  type PendingInput
+} from '../protocol/input-client.js';
+import {
+  loadLastInputOffset,
+  loadLastOutputOffset,
+  saveLastInputOffset,
+  saveLastOutputOffset
+} from '../protocol/reconnect.js';
 
 export interface TerminalViewProps {
   readonly client: ProtocolClient;
@@ -26,7 +53,7 @@ function createInputId(deviceId: DeviceId): InputMessageId {
 
 export function createTerminalOutputSyncScheduler(
   materialize: () => string,
-  publish: (output: string) => void,
+  publish: (output: string) => void
 ): () => void {
   let pending = false;
 
@@ -43,19 +70,48 @@ export function createTerminalOutputSyncScheduler(
   };
 }
 
+export function recordAcceptedInputAck(
+  message: InputAckMessagePayload,
+  client: Pick<ProtocolClient, 'updateRecoveryOffsets'>,
+  inputOffsetRef: { current: number },
+  acknowledgedInputIdsRef: { current: Set<InputMessageId> }
+): boolean {
+  if (message.status !== INPUT_ACK_STATUSES.ACCEPTED) {
+    return false;
+  }
+  if (acknowledgedInputIdsRef.current.has(message.input_id)) {
+    return false;
+  }
+
+  acknowledgedInputIdsRef.current.add(message.input_id);
+  inputOffsetRef.current += 1;
+  saveLastInputOffset(message.instance_id, inputOffsetRef.current);
+  client.updateRecoveryOffsets?.({ lastInputOffset: inputOffsetRef.current });
+  return true;
+}
+
 export function TerminalView({ client, credentials, instanceId }: TerminalViewProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
-  const fallbackBufferRef = useRef("");
+  const fallbackBufferRef = useRef('');
   const syncFallbackOutputRef = useRef<() => void>(() => undefined);
-  const outputStateRef = useRef<TerminalOutputState>({ chunks: [], visibleLength: 0, scrollOffset: 0, maxLength: 1_000_000 });
+  const outputStateRef = useRef<TerminalOutputState>({
+    chunks: [],
+    visibleLength: 0,
+    scrollOffset: 0,
+    maxLength: 1_000_000
+  });
   const inputClientRef = useRef<InputRecoveryClient | null>(null);
+  const inputOffsetRef = useRef(loadLastInputOffset(instanceId));
+  const acknowledgedInputIdsRef = useRef<Set<InputMessageId>>(new Set());
   const [status, setStatus] = useState<ProtocolClientStatus>(client.status);
   const [connectionState, setConnectionState] = useState<DisplayConnectionState>(client.status);
-  const [notice, setNotice] = useState("等待连接。");
-  const [fallbackInput, setFallbackInput] = useState("");
-  const [terminalOutput, setTerminalOutput] = useState("");
-  const [terminalScale, setTerminalScale] = useState(calculateTerminalScale({ containerWidth: 960, characterWidth: 8 }));
+  const [notice, setNotice] = useState('等待连接。');
+  const [fallbackInput, setFallbackInput] = useState('');
+  const [terminalOutput, setTerminalOutput] = useState('');
+  const [terminalScale, setTerminalScale] = useState(
+    calculateTerminalScale({ containerWidth: 960, characterWidth: 8 })
+  );
   const [pendingInputs, setPendingInputs] = useState<PendingInput[]>([]);
 
   useEffect(() => {
@@ -64,16 +120,22 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       (output) => {
         fallbackBufferRef.current = output;
         setTerminalOutput(output);
-      },
+      }
     );
   }, []);
 
-  useEffect(() => client.on("status", (nextStatus) => {
-    setStatus(nextStatus);
-    setConnectionState(nextStatus === "closed" && status === "open" ? "reconnecting" : nextStatus);
-    inputClientRef.current?.setOnline(nextStatus === "open");
-    setPendingInputs(inputClientRef.current?.pending() ?? []);
-  }), [client, status]);
+  useEffect(
+    () =>
+      client.on('status', (nextStatus) => {
+        setStatus(nextStatus);
+        setConnectionState(
+          nextStatus === 'closed' && status === 'open' ? 'reconnecting' : nextStatus
+        );
+        inputClientRef.current?.setOnline(nextStatus === 'open');
+        setPendingInputs(inputClientRef.current?.pending() ?? []);
+      }),
+    [client, status]
+  );
 
   useEffect(() => {
     if (containerRef.current === null) {
@@ -81,13 +143,17 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
     }
 
     const measuredWidth = containerRef.current.clientWidth || 960;
-    const getCharacterWidth = () => measureTerminalCharacterWidth(containerRef.current ?? document.body);
-    const nextScale = calculateTerminalScale({ containerWidth: measuredWidth, characterWidth: getCharacterWidth() });
+    const getCharacterWidth = () =>
+      measureTerminalCharacterWidth(containerRef.current ?? document.body);
+    const nextScale = calculateTerminalScale({
+      containerWidth: measuredWidth,
+      characterWidth: getCharacterWidth()
+    });
     setTerminalScale(nextScale);
     const scaleObserver = createTerminalScaleObserver({
       element: containerRef.current,
       getCharacterWidth,
-      onScaleChange: setTerminalScale,
+      onScaleChange: setTerminalScale
     });
 
     const terminal = new Terminal({ cols: nextScale.columns, rows: 30, convertEol: true });
@@ -110,6 +176,11 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
   }, [client, credentials, instanceId]);
 
   useEffect(() => {
+    inputOffsetRef.current = loadLastInputOffset(instanceId);
+    acknowledgedInputIdsRef.current = new Set();
+  }, [instanceId]);
+
+  useEffect(() => {
     if (credentials === null) {
       inputClientRef.current = null;
       setPendingInputs([]);
@@ -120,29 +191,34 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       deviceId: credentials.device_id,
       instanceId,
       transport: client,
-      createInputId: () => createInputId(credentials.device_id),
+      createInputId: () => createInputId(credentials.device_id)
     });
     setPendingInputs([]);
   }, [client, credentials, instanceId]);
 
   useEffect(() => {
-    const unsubscribe = client.on("message", (message) => {
+    const unsubscribe = client.on('message', (message) => {
       switch (message.type) {
         case SERVER_MESSAGE_TYPES.HELLO:
           setNotice(`已连接，服务端输出偏移：${message.next_output_offset}`);
           break;
         case SERVER_MESSAGE_TYPES.OUTPUT: {
-          outputStateRef.current = appendTerminalOutput(outputStateRef.current, message, terminalRef.current);
+          outputStateRef.current = appendTerminalOutput(
+            outputStateRef.current,
+            message,
+            terminalRef.current
+          );
           syncFallbackOutputRef.current();
           const nextOffset = message.offset + message.data.length;
           saveLastOutputOffset(message.instance_id, nextOffset);
+          client.updateRecoveryOffsets?.({ lastOutputOffset: nextOffset });
           client.acknowledgeOutput(message.instance_id, nextOffset);
           break;
         }
         case SERVER_MESSAGE_TYPES.OUTPUT_GAP:
           saveLastOutputOffset(message.instance_id, message.available_from_offset);
           setNotice(
-            `输出缓冲已过期，请求偏移 ${message.requested_offset}，将从 ${message.available_from_offset} 继续。`,
+            `输出缓冲已过期，请求偏移 ${message.requested_offset}，将从 ${message.available_from_offset} 继续。`
           );
           break;
         case SERVER_MESSAGE_TYPES.CONNECTION_STATE:
@@ -151,6 +227,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           break;
         case SERVER_MESSAGE_TYPES.INPUT_ACK:
           inputClientRef.current?.handleAck(message);
+          recordAcceptedInputAck(message, client, inputOffsetRef, acknowledgedInputIdsRef);
           setPendingInputs(inputClientRef.current?.pending() ?? []);
           break;
         case SERVER_MESSAGE_TYPES.ERROR:
@@ -164,7 +241,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
 
   useEffect(() => {
     if (credentials === null) {
-      setNotice("请先完成设备配对。");
+      setNotice('请先完成设备配对。');
       return;
     }
 
@@ -173,13 +250,14 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       access_token: credentials.access_token,
       instance_id: instanceId,
       last_output_offset: loadLastOutputOffset(instanceId),
+      last_input_offset: loadLastInputOffset(instanceId)
     });
 
-    return () => client.disconnect(1000, "terminal view unmounted");
+    return () => client.disconnect(1000, 'terminal view unmounted');
   }, [client, credentials, instanceId]);
 
   function handleFallbackKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
-    if (event.key !== "Enter" || credentials === null || client.status !== "open") {
+    if (event.key !== 'Enter' || credentials === null || client.status !== 'open') {
       return;
     }
 
@@ -187,7 +265,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
     const payload = `${fallbackInput}\n`;
     inputClientRef.current?.send(payload);
     setPendingInputs(inputClientRef.current?.pending() ?? []);
-    setFallbackInput("");
+    setFallbackInput('');
   }
 
   function handleConfirmOfflineInput(): void {
@@ -209,7 +287,12 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       <div
         ref={containerRef}
         role="terminal"
-        style={{ minHeight: "24rem", transform: `scale(${terminalScale.scale})`, transformOrigin: "top left", width: `${terminalScale.contentWidth}px` }}
+        style={{
+          minHeight: '24rem',
+          transform: `scale(${terminalScale.scale})`,
+          transformOrigin: 'top left',
+          width: `${terminalScale.contentWidth}px`
+        }}
       />
       <label>
         输入备用区

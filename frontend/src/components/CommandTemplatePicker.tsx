@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement } from 'react';
 
 export interface CommandTemplate {
   readonly id: string;
@@ -8,10 +8,10 @@ export interface CommandTemplate {
 
 export function renderCommandTemplatePicker(templates: readonly CommandTemplate[]): string {
   if (templates.length === 0) {
-    return "没有可用的命令模板。";
+    return '没有可用的命令模板。';
   }
 
-  return templates.map((template) => `${template.label}：${template.template}`).join("；");
+  return templates.map((template) => `${template.label}：${template.template}`).join('；');
 }
 
 export interface CommandTemplatePickerProps {
@@ -19,7 +19,10 @@ export interface CommandTemplatePickerProps {
   readonly onSelect?: (template: CommandTemplate) => void;
 }
 
-export function CommandTemplatePicker({ templates, onSelect }: CommandTemplatePickerProps): ReactElement {
+export function CommandTemplatePicker({
+  templates,
+  onSelect
+}: CommandTemplatePickerProps): ReactElement {
   return (
     <section aria-label="命令模板">
       <p>{renderCommandTemplatePicker(templates)}</p>

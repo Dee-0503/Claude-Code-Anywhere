@@ -1,33 +1,31 @@
 export const CLIENT_MESSAGE_TYPES = {
-  INPUT: "input",
-  ACK_OUTPUT: "ack_output",
-  CANCEL_INPUT: "cancel_input",
-  CONFIRM_INTERRUPT: "confirm_interrupt",
-  CANCEL_INTERRUPT: "cancel_interrupt",
-  HEARTBEAT: "heartbeat",
+  INPUT: 'input',
+  ACK_OUTPUT: 'ack_output',
+  CANCEL_INPUT: 'cancel_input',
+  CONFIRM_INTERRUPT: 'confirm_interrupt',
+  CANCEL_INTERRUPT: 'cancel_interrupt',
+  HEARTBEAT: 'heartbeat'
 } as const;
 
 export const SERVER_MESSAGE_TYPES = {
-  HELLO: "hello",
-  OUTPUT: "output",
-  OUTPUT_GAP: "output_gap",
-  INPUT_ACK: "input_ack",
-  QUEUED_INPUTS: "queued_inputs",
-  PRESENCE: "presence",
-  CONNECTION_STATE: "connection_state",
-  ERROR: "error",
+  HELLO: 'hello',
+  OUTPUT: 'output',
+  OUTPUT_GAP: 'output_gap',
+  INPUT_ACK: 'input_ack',
+  QUEUED_INPUTS: 'queued_inputs',
+  PRESENCE: 'presence',
+  CONNECTION_STATE: 'connection_state',
+  ERROR: 'error'
 } as const;
 
 export const WEBSOCKET_MESSAGE_TYPES = {
   ...CLIENT_MESSAGE_TYPES,
-  ...SERVER_MESSAGE_TYPES,
+  ...SERVER_MESSAGE_TYPES
 } as const;
 
-export type ClientMessageType =
-  (typeof CLIENT_MESSAGE_TYPES)[keyof typeof CLIENT_MESSAGE_TYPES];
+export type ClientMessageType = (typeof CLIENT_MESSAGE_TYPES)[keyof typeof CLIENT_MESSAGE_TYPES];
 
-export type ServerMessageType =
-  (typeof SERVER_MESSAGE_TYPES)[keyof typeof SERVER_MESSAGE_TYPES];
+export type ServerMessageType = (typeof SERVER_MESSAGE_TYPES)[keyof typeof SERVER_MESSAGE_TYPES];
 
 export type WebSocketMessageType = ClientMessageType | ServerMessageType;
 
@@ -36,6 +34,7 @@ export interface WebSocketConnectionParams {
   access_token: string;
   instance_id: string;
   last_output_offset: number;
+  last_input_offset: number;
 }
 
 export interface InputMessagePayload {
@@ -97,14 +96,13 @@ export interface OutputGapMessagePayload {
 }
 
 export const INPUT_ACK_STATUSES = {
-  ACCEPTED: "accepted",
-  DUPLICATE: "duplicate",
-  PENDING_CONFIRMATION: "pending_confirmation",
-  REJECTED: "rejected",
+  ACCEPTED: 'accepted',
+  DUPLICATE: 'duplicate',
+  PENDING_CONFIRMATION: 'pending_confirmation',
+  REJECTED: 'rejected'
 } as const;
 
-export type InputAckStatus =
-  (typeof INPUT_ACK_STATUSES)[keyof typeof INPUT_ACK_STATUSES];
+export type InputAckStatus = (typeof INPUT_ACK_STATUSES)[keyof typeof INPUT_ACK_STATUSES];
 
 export interface InputAckMessagePayload {
   type: typeof SERVER_MESSAGE_TYPES.INPUT_ACK;
@@ -120,7 +118,7 @@ export interface QueuedInputMessagePayload {
     input_id: string;
     device_id: string;
     payload: string;
-    status: "queued";
+    status: 'queued';
   }>;
 }
 
@@ -134,13 +132,12 @@ export interface PresenceMessagePayload {
 }
 
 export const CONNECTION_STATES = {
-  CONNECTED: "connected",
-  DEGRADED: "degraded",
-  DISCONNECTED: "disconnected",
+  CONNECTED: 'connected',
+  DEGRADED: 'degraded',
+  DISCONNECTED: 'disconnected'
 } as const;
 
-export type ConnectionState =
-  (typeof CONNECTION_STATES)[keyof typeof CONNECTION_STATES];
+export type ConnectionState = (typeof CONNECTION_STATES)[keyof typeof CONNECTION_STATES];
 
 export interface ConnectionStateMessagePayload {
   type: typeof SERVER_MESSAGE_TYPES.CONNECTION_STATE;

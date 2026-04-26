@@ -1,4 +1,4 @@
-import type { ClaudeInstanceId } from "../../../shared/protocol/domain.js";
+import type { ClaudeInstanceId } from '../../../shared/protocol/domain.js';
 
 export interface TeamDetectionInput {
   readonly instanceId: ClaudeInstanceId;
@@ -29,7 +29,7 @@ export function detectTeamSessions(inputs: readonly TeamDetectionInput[]): TeamS
       instanceId: input.instanceId,
       instanceName: input.instanceName,
       teammateId: input.teammateId ?? input.instanceId,
-      teammateName: input.teammateName ?? input.instanceName,
+      teammateName: input.teammateName ?? input.instanceName
     };
     groups.set(teamId, [...(groups.get(teamId) ?? []), teammate]);
   }

@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import type { SqliteDatabase } from "./connection.js";
+import type { SqliteDatabase } from './connection.js';
 
 const CURRENT_SCHEMA_VERSION = 1;
 const MIGRATIONS_TABLE_SQL = `
@@ -25,20 +25,20 @@ export interface MigrationResult {
 }
 
 function schemaPath(): string {
-  return join(dirname(fileURLToPath(import.meta.url)), "schema.sql");
+  return join(dirname(fileURLToPath(import.meta.url)), 'schema.sql');
 }
 
 export function loadInitialSchema(): string {
-  return readFileSync(schemaPath(), "utf8");
+  return readFileSync(schemaPath(), 'utf8');
 }
 
 export function getMigrations(): readonly Migration[] {
   return [
     {
       version: CURRENT_SCHEMA_VERSION,
-      name: "initial_schema",
-      sql: loadInitialSchema(),
-    },
+      name: 'initial_schema',
+      sql: loadInitialSchema()
+    }
   ];
 }
 
@@ -50,7 +50,7 @@ export function getCurrentSchemaVersion(database: SqliteDatabase): number {
   ensureMigrationsTable(database);
 
   const row = database
-    .prepare("SELECT COALESCE(MAX(version), 0) AS version FROM schema_migrations")
+    .prepare('SELECT COALESCE(MAX(version), 0) AS version FROM schema_migrations')
     .get() as { version: number } | undefined;
 
   return row?.version ?? 0;
@@ -58,7 +58,7 @@ export function getCurrentSchemaVersion(database: SqliteDatabase): number {
 
 export function runMigrations(
   database: SqliteDatabase,
-  migrations: readonly Migration[] = getMigrations(),
+  migrations: readonly Migration[] = getMigrations()
 ): MigrationResult {
   ensureMigrationsTable(database);
 
@@ -70,9 +70,7 @@ export function runMigrations(
   const applyMigration = database.transaction((migration: Migration) => {
     database.exec(migration.sql);
     database
-      .prepare(
-        "INSERT INTO schema_migrations (version, name) VALUES (@version, @name)",
-      )
+      .prepare('INSERT INTO schema_migrations (version, name) VALUES (@version, @name)')
       .run({ version: migration.version, name: migration.name });
   });
 
@@ -82,6 +80,6 @@ export function runMigrations(
 
   return {
     applied: pending,
-    currentVersion: getCurrentSchemaVersion(database),
+    currentVersion: getCurrentSchemaVersion(database)
   };
 }

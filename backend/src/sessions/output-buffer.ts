@@ -1,8 +1,8 @@
 import type {
   ClaudeInstanceId,
   OutputBuffer,
-  OutputChunk,
-} from "../../../shared/protocol/domain.js";
+  OutputChunk
+} from '../../../shared/protocol/domain.js';
 
 export interface AppendOutputResult {
   readonly chunk: OutputChunk;
@@ -14,7 +14,7 @@ function trimUtf8Bytes(data: string, bytesToDrop: number): string {
     return data;
   }
 
-  return Buffer.from(data, "utf8").subarray(bytesToDrop).toString("utf8");
+  return Buffer.from(data, 'utf8').subarray(bytesToDrop).toString('utf8');
 }
 
 export class BoundedOutputBuffer {
@@ -25,10 +25,10 @@ export class BoundedOutputBuffer {
 
   constructor(
     private readonly instanceId: ClaudeInstanceId,
-    private readonly capacityBytes: number,
+    private readonly capacityBytes: number
   ) {
     if (!Number.isInteger(capacityBytes) || capacityBytes < 1) {
-      throw new Error("Output buffer capacity must be a positive integer");
+      throw new Error('Output buffer capacity must be a positive integer');
     }
   }
 
@@ -38,12 +38,12 @@ export class BoundedOutputBuffer {
       baseOffset: this.baseOffset,
       nextOffset: this.nextOffset,
       capacityBytes: this.capacityBytes,
-      chunks: [...this.chunks],
+      chunks: [...this.chunks]
     };
   }
 
   append(data: string, now = new Date()): AppendOutputResult {
-    const byteLength = Buffer.byteLength(data, "utf8");
+    const byteLength = Buffer.byteLength(data, 'utf8');
     const offset = this.nextOffset;
     const nextOffset = offset + byteLength;
     const chunk: OutputChunk = {
@@ -51,7 +51,7 @@ export class BoundedOutputBuffer {
       offset,
       nextOffset,
       data,
-      createdAt: now.toISOString(),
+      createdAt: now.toISOString()
     };
 
     this.chunks.push(chunk);
@@ -64,7 +64,7 @@ export class BoundedOutputBuffer {
 
   replayFrom(offset: number): OutputChunk[] | null {
     if (!Number.isInteger(offset) || offset < 0) {
-      throw new Error("Replay offset must be a non-negative integer");
+      throw new Error('Replay offset must be a non-negative integer');
     }
 
     if (offset < this.baseOffset) {
@@ -82,7 +82,7 @@ export class BoundedOutputBuffer {
         return {
           ...chunk,
           offset,
-          data,
+          data
         };
       });
   }
@@ -100,7 +100,7 @@ export class BoundedOutputBuffer {
         return;
       }
 
-      this.sizeBytes -= Buffer.byteLength(removed.data, "utf8");
+      this.sizeBytes -= Buffer.byteLength(removed.data, 'utf8');
       this.baseOffset = removed.nextOffset;
     }
   }

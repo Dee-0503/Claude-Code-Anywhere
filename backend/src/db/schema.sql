@@ -28,6 +28,15 @@ CREATE TABLE IF NOT EXISTS pairing_codes (
 
 CREATE INDEX IF NOT EXISTS idx_pairing_codes_expires_at ON pairing_codes(expires_at);
 
+CREATE TABLE IF NOT EXISTS pairing_attempts (
+  key TEXT PRIMARY KEY,
+  failed_attempts INTEGER NOT NULL DEFAULT 0 CHECK (failed_attempts >= 0),
+  locked_until TEXT,
+  last_failed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_pairing_attempts_locked_until ON pairing_attempts(locked_until);
+
 CREATE TABLE IF NOT EXISTS instances (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -35,6 +44,7 @@ CREATE TABLE IF NOT EXISTS instances (
   pty_pid INTEGER,
   cwd TEXT NOT NULL,
   created_by_device_id TEXT,
+  team_metadata_json TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   last_active_at TEXT,
   exited_at TEXT,
@@ -79,14 +89,18 @@ CREATE INDEX IF NOT EXISTS idx_connections_instance_state ON connections(instanc
 CREATE TABLE IF NOT EXISTS notifications (
   id TEXT PRIMARY KEY,
   instance_id TEXT NOT NULL,
+  device_id TEXT,
   type TEXT NOT NULL CHECK (type IN ('permission_request', 'long_running_complete', 'error', 'mention', 'input_required')),
   priority TEXT NOT NULL CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   status TEXT NOT NULL CHECK (status IN ('pending', 'delivered', 'read', 'escalated', 'expired')),
-  payload_json TEXT,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  expires_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   delivered_at TEXT,
   read_at TEXT,
-  FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE
+  FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+  FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_notifications_instance_status_created ON notifications(instance_id, status, created_at);
