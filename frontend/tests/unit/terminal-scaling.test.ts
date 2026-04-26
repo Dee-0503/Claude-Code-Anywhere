@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateTerminalScale } from "../../src/terminal/scaling.js";
+import { calculateTerminalScale, createTerminalScaleObserver } from "../../src/terminal/scaling.js";
 
 describe("terminal scaling", () => {
   it("keeps a 120-column terminal at full scale when the container fits", () => {
@@ -25,5 +25,24 @@ describe("terminal scaling", () => {
       scale: 0.5,
       contentWidth: 960,
     });
+  });
+
+  it("updates scaling when the terminal container is resized", () => {
+    const observedScales: number[] = [];
+    const element = document.createElement("div");
+    Object.defineProperty(element, "clientWidth", { configurable: true, value: 480 });
+
+    const observer = createTerminalScaleObserver({
+      element,
+      characterWidth: 8,
+      onScaleChange: (scale) => observedScales.push(scale.scale),
+    });
+
+    observer.recalculate();
+    Object.defineProperty(element, "clientWidth", { configurable: true, value: 960 });
+    observer.recalculate();
+    observer.disconnect();
+
+    expect(observedScales).toEqual([0.5, 1]);
   });
 });

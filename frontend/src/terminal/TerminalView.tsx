@@ -8,7 +8,7 @@ import { ConnectionStatus, type DisplayConnectionState } from "../components/Con
 import { OfflineInputConfirm } from "../components/OfflineInputConfirm.js";
 import { TerminalSearch } from "../components/TerminalSearch.js";
 import { appendTerminalOutput, scrollTerminalOutput, type TerminalOutputState } from "./outputRenderer.js";
-import { calculateTerminalScale } from "./scaling.js";
+import { calculateTerminalScale, createTerminalScaleObserver } from "./scaling.js";
 import type { ProtocolClient, ProtocolClientStatus } from "../protocol/client.js";
 import type { DeviceCredentials } from "../protocol/device-credentials.js";
 import { createInputRecoveryClient, type InputRecoveryClient, type PendingInput } from "../protocol/input-client.js";
@@ -53,6 +53,11 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
     const measuredWidth = containerRef.current.clientWidth || 960;
     const nextScale = calculateTerminalScale({ containerWidth: measuredWidth, characterWidth: 8 });
     setTerminalScale(nextScale);
+    const scaleObserver = createTerminalScaleObserver({
+      element: containerRef.current,
+      characterWidth: 8,
+      onScaleChange: setTerminalScale,
+    });
 
     const terminal = new Terminal({ cols: nextScale.columns, rows: 30, convertEol: true });
     terminal.open(containerRef.current);
@@ -66,6 +71,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
     });
 
     return () => {
+      scaleObserver.disconnect();
       inputDispose.dispose();
       terminal.dispose();
       terminalRef.current = null;
