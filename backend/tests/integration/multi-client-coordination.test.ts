@@ -14,15 +14,6 @@ describe('multi-client input coordination', () => {
       pairing_code: bootstrap.pairing_code,
       device_name: 'Cee MacBook'
     });
-    const memberPairing = await harness.auth.createPairingCode({
-      device_id: admin.device_id,
-      access_token: admin.access_token,
-      target_name_hint: 'Cee iPhone'
-    });
-    await harness.auth.consumePairingCode({
-      pairing_code: memberPairing.pairing_code,
-      device_name: 'Cee iPhone'
-    });
     const first = await harness.sessions.attachTerminal({
       device_id: admin.device_id,
       access_token: admin.access_token,
@@ -44,18 +35,14 @@ describe('multi-client input coordination', () => {
       expect.objectContaining({
         type: SERVER_MESSAGE_TYPES.PRESENCE,
         instance_id: first.firstMessage.instance_id,
-        devices: expect.arrayContaining([
-          expect.objectContaining({ device_id: admin.device_id })
-        ])
+        devices: expect.arrayContaining([expect.objectContaining({ device_id: admin.device_id })])
       })
     );
     expect(second.messages).toContainEqual(
       expect.objectContaining({
         type: SERVER_MESSAGE_TYPES.PRESENCE,
         instance_id: first.firstMessage.instance_id,
-        devices: expect.arrayContaining([
-          expect.objectContaining({ device_id: admin.device_id })
-        ])
+        devices: expect.arrayContaining([expect.objectContaining({ device_id: admin.device_id })])
       })
     );
 
