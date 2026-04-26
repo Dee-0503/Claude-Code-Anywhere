@@ -241,7 +241,7 @@
 **Purpose**: Validate security, performance, docs, and phase readiness.
 
 - [X] T084 [P] Add security tests for revoked devices, expired pairing codes, and token hash verification in `backend/tests/security/auth-security.test.ts`
-- [ ] T085 [P] Add performance test for output streaming and 1MB ring buffer behavior in `backend/tests/performance/output-streaming.test.ts`
+- [X] T085 [P] Add performance test for output streaming and 1MB ring buffer behavior in `backend/tests/performance/output-streaming.test.ts`
 - [ ] T086 Run quickstart scenario validation and record results in `specs/001-remote-terminal/quickstart.md`
 - [ ] T087 Verify coverage for core backend modules and frontend protocol modules in `vitest.config.ts`
 - [ ] T088 Audit production WSS/TLS configuration guidance in `backend/src/config.ts`
