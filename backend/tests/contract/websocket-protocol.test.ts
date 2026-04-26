@@ -33,7 +33,15 @@ const attachableInstance: ClaudeInstance = {
 };
 
 const authentication = {
-  verifyDeviceToken: async () => ({ id: "device-id" }),
+  verifyDeviceToken: async () => ({
+    id: "device-id",
+    name: "Browser",
+    role: "admin" as const,
+    tokenHash: "hash",
+    createdAt: "2026-04-25T12:00:00.000Z",
+    lastSeenAt: "2026-04-25T12:00:00.000Z",
+    revokedAt: null,
+  }),
   findInstanceById: (instanceId: string) => instanceId === attachableInstance.id ? attachableInstance : undefined,
   findAttachableInstanceForDevice: (instanceId: string, deviceId: string) => (
     instanceId === attachableInstance.id && deviceId === attachableInstance.createdByDeviceId
@@ -44,17 +52,17 @@ const authentication = {
 
 describe("websocket protocol contract", () => {
   it("requires authenticated connection fields before attaching to an instance", async () => {
-    const protocol = createWebSocketProtocolService({ authentication });
+    const protocol = createWebSocketProtocolService();
 
     await expect(
       protocol.acceptConnection({
         device_id: "device-id",
         access_token: "secret-token",
         instance_id: "instance-id",
-      }),
+      }, authentication),
     ).rejects.toMatchObject({ code: "INVALID_WEBSOCKET_HANDSHAKE" });
 
-    await expect(protocol.acceptConnection(connectionParams)).resolves.toMatchObject({
+    await expect(protocol.acceptConnection(connectionParams, authentication)).resolves.toMatchObject({
       type: SERVER_MESSAGE_TYPES.HELLO,
       server_id: expect.any(String),
       instance_id: "instance-id",
@@ -64,7 +72,7 @@ describe("websocket protocol contract", () => {
   });
 
   it("serializes hello, output, ack_output, and output_gap with the contract field names", () => {
-    const protocol = createWebSocketProtocolService({ authentication });
+    const protocol = createWebSocketProtocolService();
 
     expect(protocol.serializeHello({
       serverId: "local-server-id",
@@ -113,7 +121,7 @@ describe("websocket protocol contract", () => {
   });
 
   it("replays buffered output from last_output_offset or emits output_gap when history was evicted", async () => {
-    const protocol = createWebSocketProtocolService({ outputBufferBytes: 16, authentication });
+    const protocol = createWebSocketProtocolService({ outputBufferBytes: 16 });
 
     await protocol.appendOutput("instance-id", "01234567");
     await protocol.appendOutput("instance-id", "89abcdef");
@@ -121,7 +129,7 @@ describe("websocket protocol contract", () => {
     await expect(protocol.acceptConnection({
       ...connectionParams,
       last_output_offset: 8,
-    })).resolves.toMatchObject({
+    }, authentication)).resolves.toMatchObject({
       replay: [
         {
           type: SERVER_MESSAGE_TYPES.OUTPUT,
@@ -137,7 +145,7 @@ describe("websocket protocol contract", () => {
     await expect(protocol.acceptConnection({
       ...connectionParams,
       last_output_offset: 1,
-    })).resolves.toMatchObject({
+    }, authentication)).resolves.toMatchObject({
       replay: [
         {
           type: SERVER_MESSAGE_TYPES.OUTPUT_GAP,

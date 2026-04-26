@@ -8,6 +8,9 @@ import { replayOutput, type ReplayMessage } from "../sessions/replay-service.js"
 export interface WebSocketProtocolServiceOptions {
   readonly outputBufferBytes?: number;
   readonly serverId?: string;
+}
+
+export interface AuthenticatedWebSocketProtocolServiceOptions extends WebSocketProtocolServiceOptions {
   readonly authentication: WebSocketAuthenticationOptions;
 }
 
@@ -40,8 +43,8 @@ export function createWebSocketProtocolService(options: WebSocketProtocolService
   }
 
   return {
-    async acceptConnection(params: Partial<WebSocketConnectionParams>): Promise<AcceptedConnection> {
-      const validParams = await authenticateWebSocketConnection(params, options.authentication);
+    async acceptConnection(params: Partial<WebSocketConnectionParams>, authentication: WebSocketAuthenticationOptions): Promise<AcceptedConnection> {
+      const validParams = await authenticateWebSocketConnection(params, authentication);
       const buffer = getBuffer(validParams.instance_id);
       const hello = serializeHello({
         serverId,

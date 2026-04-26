@@ -184,7 +184,7 @@ export function installWebSocketUpgradeHandler(input: {
         const url = new URL(request.url ?? "", "http://localhost");
         rejectInvalidWebSocketRequestPolicy({
           path: url.pathname,
-          origin: request.headers.origin,
+          origin: request.headers.origin ?? null,
           allowedPath: input.config.websocketPath,
           allowedOrigins: input.config.websocketAllowedOrigins,
         });

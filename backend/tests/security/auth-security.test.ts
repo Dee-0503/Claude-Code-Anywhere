@@ -30,10 +30,7 @@ function createAuthenticatedAttachFixture() {
 
 describe("auth security", () => {
   it("rejects revoked device tokens at the websocket authentication boundary", async () => {
-    const service = createBootstrapPairingService({
-      now: () => NOW,
-      pairingTtlMs: TEN_MINUTES_MS,
-    });
+    const { service, instances } = createAuthenticatedAttachFixture();
     const bootstrap = await service.createBootstrapPairingCode();
     const admin = await service.consumePairingCode({
       pairing_code: bootstrap.pairing_code,

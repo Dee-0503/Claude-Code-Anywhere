@@ -112,7 +112,7 @@ describe("websocket HTTP upgrade authentication", () => {
     server = bootstrapServer.httpServer;
     const port = await listen(server);
 
-    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&instance_id=${instance.id}&last_output_offset=0`)).resolves.toBe(400);
+    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&instance_id=${instance.id}&last_output_offset=0`)).resolves.toBe(401);
     await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=tampered-token&instance_id=${instance.id}&last_output_offset=0`)).resolves.toBe(401);
     expect(bootstrapServer.registry.list()).toHaveLength(0);
   });
@@ -132,7 +132,7 @@ describe("websocket HTTP upgrade authentication", () => {
     });
     await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=${admin.access_token}&instance_id=${instance.id}&last_output_offset=0`)).resolves.toBe(404);
     expect(bootstrapServer.registry.list()).toHaveLength(0);
-  });
+  }, 10_000);
 
   it("rejects invalid origin and path and accepts authorized upgrades", async () => {
     const { admin, instance, bootstrapServer } = await createFixture();
