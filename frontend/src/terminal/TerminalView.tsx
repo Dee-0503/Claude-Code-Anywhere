@@ -12,7 +12,7 @@ import { calculateTerminalScale, createTerminalScaleObserver, measureTerminalCha
 import type { ProtocolClient, ProtocolClientStatus } from "../protocol/client.js";
 import type { DeviceCredentials } from "../protocol/device-credentials.js";
 import { createInputRecoveryClient, type InputRecoveryClient, type PendingInput } from "../protocol/input-client.js";
-import { loadLastOutputOffset, saveLastOutputOffset } from "../protocol/reconnect.js";
+import { loadLastInputOffset, loadLastOutputOffset, saveLastInputOffset, saveLastOutputOffset } from "../protocol/reconnect.js";
 
 export interface TerminalViewProps {
   readonly client: ProtocolClient;
@@ -50,6 +50,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
   const syncFallbackOutputRef = useRef<() => void>(() => undefined);
   const outputStateRef = useRef<TerminalOutputState>({ chunks: [], visibleLength: 0, scrollOffset: 0, maxLength: 1_000_000 });
   const inputClientRef = useRef<InputRecoveryClient | null>(null);
+  const inputOffsetRef = useRef(loadLastInputOffset(instanceId));
   const [status, setStatus] = useState<ProtocolClientStatus>(client.status);
   const [connectionState, setConnectionState] = useState<DisplayConnectionState>(client.status);
   const [notice, setNotice] = useState("等待连接。");
@@ -110,6 +111,10 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
   }, [client, credentials, instanceId]);
 
   useEffect(() => {
+    inputOffsetRef.current = loadLastInputOffset(instanceId);
+  }, [instanceId]);
+
+  useEffect(() => {
     if (credentials === null) {
       inputClientRef.current = null;
       setPendingInputs([]);
@@ -136,6 +141,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           syncFallbackOutputRef.current();
           const nextOffset = message.offset + message.data.length;
           saveLastOutputOffset(message.instance_id, nextOffset);
+          client.updateRecoveryOffsets?.({ lastOutputOffset: nextOffset });
           client.acknowledgeOutput(message.instance_id, nextOffset);
           break;
         }
@@ -151,6 +157,9 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           break;
         case SERVER_MESSAGE_TYPES.INPUT_ACK:
           inputClientRef.current?.handleAck(message);
+          inputOffsetRef.current += 1;
+          saveLastInputOffset(message.instance_id, inputOffsetRef.current);
+          client.updateRecoveryOffsets?.({ lastInputOffset: inputOffsetRef.current });
           setPendingInputs(inputClientRef.current?.pending() ?? []);
           break;
         case SERVER_MESSAGE_TYPES.ERROR:
@@ -173,7 +182,8 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       access_token: credentials.access_token,
       instance_id: instanceId,
       last_output_offset: loadLastOutputOffset(instanceId),
-    });
+      last_input_offset: loadLastInputOffset(instanceId),
+    } as Parameters<typeof client.connect>[0]);
 
     return () => client.disconnect(1000, "terminal view unmounted");
   }, [client, credentials, instanceId]);

@@ -1,6 +1,7 @@
 import type { ClaudeInstanceId } from "../../../shared/protocol/domain.js";
 
 const OFFSET_KEY_PREFIX = "cca.lastOutputOffset";
+const INPUT_OFFSET_KEY_PREFIX = "cca.lastInputOffset";
 
 export interface ReconnectOffsets {
   readonly [instanceId: string]: number;
@@ -8,6 +9,10 @@ export interface ReconnectOffsets {
 
 function offsetKey(instanceId: ClaudeInstanceId): string {
   return `${OFFSET_KEY_PREFIX}.${instanceId}`;
+}
+
+function inputOffsetKey(instanceId: ClaudeInstanceId): string {
+  return `${INPUT_OFFSET_KEY_PREFIX}.${instanceId}`;
 }
 
 export function saveLastOutputOffset(
@@ -27,6 +32,27 @@ export function loadLastOutputOffset(
   storage: Storage = window.localStorage,
 ): number {
   const raw = storage.getItem(offsetKey(instanceId));
+  const parsed = raw === null ? 0 : Number(raw);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+export function saveLastInputOffset(
+  instanceId: ClaudeInstanceId,
+  offset: number,
+  storage: Storage = window.localStorage,
+): void {
+  if (!Number.isInteger(offset) || offset < 0) {
+    return;
+  }
+
+  storage.setItem(inputOffsetKey(instanceId), String(offset));
+}
+
+export function loadLastInputOffset(
+  instanceId: ClaudeInstanceId,
+  storage: Storage = window.localStorage,
+): number {
+  const raw = storage.getItem(inputOffsetKey(instanceId));
   const parsed = raw === null ? 0 : Number(raw);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 }

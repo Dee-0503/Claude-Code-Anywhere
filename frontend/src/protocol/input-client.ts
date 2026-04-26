@@ -83,7 +83,9 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
   function confirmReplay(): void {
     online = true;
     for (const input of pendingInputs.values()) {
-      transmit(input);
+      if (!input.sent) {
+        transmit(input);
+      }
     }
   }
 

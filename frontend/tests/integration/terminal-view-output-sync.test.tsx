@@ -16,21 +16,40 @@ vi.mock("../../src/terminal/outputRenderer.js", async (importOriginal) => {
   };
 });
 
-vi.mock("xterm", () => ({
-  Terminal: class {
-    open(): void {}
-    onData(): { dispose(): void } {
-      return { dispose() {} };
-    }
-    write(): void {}
-    dispose(): void {}
-  },
-}));
+  const terminalInstances: Array<{ openedElement: HTMLElement | null; writes: string[]; dataHandler: ((data: string) => void) | null }> = [];
+
+  vi.mock("xterm", () => ({
+    Terminal: class {
+      openedElement: HTMLElement | null = null;
+      writes: string[] = [];
+      dataHandler: ((data: string) => void) | null = null;
+
+      constructor() {
+        terminalInstances.push(this);
+      }
+
+      open(element: HTMLElement): void {
+        this.openedElement = element;
+      }
+
+      onData(handler: (data: string) => void): { dispose(): void } {
+        this.dataHandler = handler;
+        return { dispose() {} };
+      }
+
+      write(data: string): void {
+        this.writes.push(data);
+      }
+
+      dispose(): void {}
+    },
+  }));
 
 describe("TerminalView output synchronization", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     getTerminalOutputText.mockReset();
+    terminalInstances.length = 0;
   });
 
   afterEach(() => {
@@ -80,6 +99,8 @@ describe("TerminalView output synchronization", () => {
     expect(getTerminalOutputText).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("alpha\nbeta\ngamma");
     expect(client.acknowledgeOutput).toHaveBeenCalledTimes(3);
+    expect(terminalInstances[0]!.openedElement).toBe(container.querySelector('[role="terminal"]'));
+    expect(terminalInstances[0]!.writes).toEqual(["alpha\n", "beta\n", "gamma\n"]);
 
     act(() => {
       root.unmount();

@@ -109,4 +109,20 @@ describe("input recovery client", () => {
       payload: "npm test\n",
     });
   });
+
+  it("does not resubmit pending input that was already sent when replay is confirmed", () => {
+    const transport = createTransport();
+    const client = createInputRecoveryClient({
+      deviceId: "device-id",
+      instanceId: "instance-id",
+      transport,
+      createInputId: () => "input-1",
+    });
+
+    client.send("npm test\n");
+    client.setOnline(false);
+    client.confirmReplay();
+
+    expect(transport.sendInput).toHaveBeenCalledTimes(1);
+  });
 });
