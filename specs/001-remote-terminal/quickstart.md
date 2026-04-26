@@ -57,6 +57,10 @@
 5. Verify UI transitions to disconnected and then reconnecting.
 6. Restore the network and verify automatic recovery.
 
+## Validation Record
+
+- 2026-04-26: Automated scenario coverage verified with `npm test` on branch `001-remote-terminal`; result: 28 test files passed, 79 tests passed. This covers bootstrap pairing, auth/token security, WebSocket protocol, terminal attach/replay, weak-network input recovery, notifications/authorization, multi-device/instance management, multi-client coordination, mobile input helpers, display scaling/search/scroll, team visualization, output streaming performance boundaries, core coverage scoping, and production TLS configuration guidance. Manual browser/PTY validation remains required before release because this repository does not yet expose a production-ready end-to-end browser server script.
+
 ## Expected MVP Result
 
 A paired browser device can securely access a local Claude Code PTY session, render terminal output faithfully, send idempotent input, survive reconnects, and enforce device revocation.
