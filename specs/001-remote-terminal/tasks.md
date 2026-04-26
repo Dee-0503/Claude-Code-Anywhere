@@ -200,12 +200,12 @@
 
 ### Tests for User Story 7
 
-- [ ] T072 [P] [US7] Add frontend unit tests for terminal scaling calculations in `frontend/tests/unit/terminal-scaling.test.ts`
+- [X] T072 [P] [US7] Add frontend unit tests for terminal scaling calculations in `frontend/tests/unit/terminal-scaling.test.ts`
 - [ ] T073 [P] [US7] Add frontend integration test for search and scroll behavior in `frontend/tests/integration/terminal-display.test.tsx`
 
 ### Implementation for User Story 7
 
-- [ ] T074 [US7] Implement fixed 120-column scaling helper in `frontend/src/terminal/scaling.ts`
+- [X] T074 [US7] Implement fixed 120-column scaling helper in `frontend/src/terminal/scaling.ts`
 - [ ] T075 [US7] Integrate scaling helper into terminal view in `frontend/src/terminal/TerminalView.tsx`
 - [ ] T076 [US7] Implement terminal search UI in `frontend/src/components/TerminalSearch.tsx`
 - [ ] T077 [US7] Optimize terminal output append and scroll handling in `frontend/src/terminal/outputRenderer.ts`
