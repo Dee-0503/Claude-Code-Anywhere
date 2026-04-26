@@ -150,6 +150,68 @@ describe("instance API contract", () => {
     expect(killed).toEqual([42]);
   });
 
+  it("hides instances from other authenticated devices", async () => {
+    const auth = createBootstrapPairingService({
+      now: () => new Date("2026-04-25T12:00:00.000Z"),
+    });
+    const adminPairing = await auth.createBootstrapPairingCode();
+    const owner = await auth.consumePairingCode({
+      pairing_code: adminPairing.pairing_code,
+      device_name: "Owner browser",
+    });
+    const memberPairing = await auth.createPairingCode({
+      device_id: owner.device_id,
+      access_token: owner.access_token,
+    });
+    const other = await auth.consumePairingCode({
+      pairing_code: memberPairing.pairing_code,
+      device_name: "Other browser",
+    });
+    const api = createInstanceApi({
+      auth,
+      instances: createInstanceService({
+        now: () => new Date("2026-04-25T12:00:00.000Z"),
+      }),
+    });
+
+    const owned = await api.createInstance({
+      device_id: owner.device_id,
+      access_token: owner.access_token,
+      name: "owner-only",
+      cwd: "/workspace/owner",
+    });
+
+    await expect(api.listInstances({
+      device_id: other.device_id,
+      access_token: other.access_token,
+    })).resolves.toEqual({ instances: [], team_sessions: [] });
+    await expect(api.getInstanceStatus({
+      device_id: other.device_id,
+      access_token: other.access_token,
+      instance_id: owned.id,
+    })).rejects.toMatchObject({
+      name: "ApiError",
+      code: "INSTANCE_UNAVAILABLE",
+      statusCode: 404,
+    });
+    await expect(api.stopInstance({
+      device_id: other.device_id,
+      access_token: other.access_token,
+      instance_id: owned.id,
+    })).rejects.toMatchObject({
+      name: "ApiError",
+      code: "INSTANCE_UNAVAILABLE",
+      statusCode: 404,
+    });
+    await expect(api.getInstanceStatus({
+      device_id: owner.device_id,
+      access_token: owner.access_token,
+      instance_id: owned.id,
+    })).resolves.toEqual({
+      id: owned.id,
+      status: CLAUDE_INSTANCE_STATUSES.RUNNING,
+    });
+  });
   it("returns typed not-found errors for unknown instances", async () => {
     const auth = createBootstrapPairingService({
       now: () => new Date("2026-04-25T12:00:00.000Z"),

@@ -52,8 +52,8 @@ describe("multi-device instance management", () => {
       cwd: "/workspace/two",
     });
     const switched = await harness.sessions.attachTerminal({
-      device_id: "member-device",
-      access_token: memberToken,
+      device_id: "admin-device",
+      access_token: adminToken,
       instance_id: second.id,
       last_output_offset: 0,
     });
@@ -81,5 +81,72 @@ describe("multi-device instance management", () => {
       instance_id: first.firstMessage.instance_id,
       last_output_offset: 0,
     })).rejects.toMatchObject({ code: "DEVICE_REVOKED" });
+  });
+
+  it("rejects cross-device attach, stop, output replay, input, and input acknowledgement access", async () => {
+    const devices = createInMemoryDeviceRepository();
+    const ownerToken = generateToken();
+    const otherToken = generateToken();
+    devices.create({
+      id: "owner-device",
+      name: "Owner browser",
+      role: DEVICE_ROLES.ADMIN,
+      tokenHash: await hashToken(ownerToken),
+      createdAt: "2026-04-25T12:00:00.000Z",
+      lastSeenAt: "2026-04-25T12:00:00.000Z",
+      revokedAt: null,
+    });
+    devices.create({
+      id: "other-device",
+      name: "Other browser",
+      role: DEVICE_ROLES.MEMBER,
+      tokenHash: await hashToken(otherToken),
+      createdAt: "2026-04-25T12:00:00.000Z",
+      lastSeenAt: "2026-04-25T12:00:00.000Z",
+      revokedAt: null,
+    });
+    const auth = createBootstrapPairingService({
+      now: () => new Date("2026-04-25T12:00:00.000Z"),
+      devices,
+    });
+    const harness = await createRemoteTerminalSessionHarness({
+      auth,
+      now: () => new Date("2026-04-25T12:00:00.000Z"),
+      ptyScript: ["secret output\n"],
+    });
+
+    const owner = await harness.sessions.attachTerminal({
+      device_id: "owner-device",
+      access_token: ownerToken,
+      cwd: "/workspace/owner",
+      last_output_offset: 0,
+    });
+    const instanceId = owner.firstMessage.instance_id;
+    await owner.send({
+      type: "input",
+      instance_id: instanceId,
+      input_id: "owner-input",
+      payload: "npm test\n",
+    });
+
+    await expect(harness.sessions.attachTerminal({
+      device_id: "other-device",
+      access_token: otherToken,
+      instance_id: instanceId,
+      last_output_offset: 0,
+    })).rejects.toMatchObject({ code: "INSTANCE_UNAVAILABLE" });
+    await expect(harness.sessions.stopInstance({
+      device_id: "other-device",
+      access_token: otherToken,
+      instance_id: instanceId,
+    })).rejects.toMatchObject({ code: "INSTANCE_UNAVAILABLE" });
+    await expect(owner.send({
+      type: "input",
+      instance_id: "other-instance",
+      input_id: "cross-input",
+      payload: "whoami\n",
+    })).rejects.toMatchObject({ code: "INSTANCE_UNAVAILABLE" });
+    await expect(owner.confirmPendingInput(["cross-input"], "other-instance")).rejects.toMatchObject({ code: "INSTANCE_UNAVAILABLE" });
+    expect(harness.pty.inputs(instanceId)).toEqual(["npm test\n"]);
   });
 });

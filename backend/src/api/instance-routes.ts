@@ -96,8 +96,8 @@ export function createInstanceApi(options: InstanceApiOptions) {
 
   return {
     async listInstances(input: AuthenticatedInstanceRequest) {
-      await authenticate(input);
-      const instances = options.instances.repository.list();
+      const device = await authenticate(input);
+      const instances = options.instances.listInstancesForDevice(device.id);
       return {
         instances: instances.map(serializeInstance),
         team_sessions: serializeTeamSessions(instances),
@@ -114,8 +114,8 @@ export function createInstanceApi(options: InstanceApiOptions) {
       return serializeInstance(instance);
     },
     async getInstanceStatus(input: InstanceStatusRequest) {
-      await authenticate(input);
-      const instance = options.instances.getInstance(input.instance_id);
+      const device = await authenticate(input);
+      const instance = options.instances.getInstanceForDevice(input.instance_id, device.id);
       if (instance === undefined) {
         throw instanceNotFound(input.instance_id);
       }
@@ -125,8 +125,8 @@ export function createInstanceApi(options: InstanceApiOptions) {
       };
     },
     async stopInstance(input: InstanceStatusRequest) {
-      await authenticate(input);
-      const instance = options.instances.stopInstance(input.instance_id);
+      const device = await authenticate(input);
+      const instance = options.instances.stopInstanceForDevice(input.instance_id, device.id);
       if (instance === undefined) {
         throw instanceNotFound(input.instance_id);
       }

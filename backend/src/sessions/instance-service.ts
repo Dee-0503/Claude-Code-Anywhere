@@ -50,6 +50,18 @@ export function createInstanceService(options: InstanceServiceOptions = {}) {
     return repository.get(instanceId);
   }
 
+  function getInstanceForDevice(instanceId: ClaudeInstanceId, deviceId: DeviceId): ClaudeInstance | undefined {
+    const instance = repository.get(instanceId);
+    if (instance === undefined || instance.createdByDeviceId !== deviceId) {
+      return undefined;
+    }
+    return instance;
+  }
+
+  function listInstancesForDevice(deviceId: DeviceId): ClaudeInstance[] {
+    return repository.list().filter((instance) => instance.createdByDeviceId === deviceId);
+  }
+
   function getProcess(instanceId: ClaudeInstanceId): PtyProcess | undefined {
     return processes.get(instanceId);
   }
@@ -70,7 +82,15 @@ export function createInstanceService(options: InstanceServiceOptions = {}) {
     return repository.update(updated);
   }
 
-  return { startInstance, getInstance, getProcess, stopInstance, repository };
+  function stopInstanceForDevice(instanceId: ClaudeInstanceId, deviceId: DeviceId): ClaudeInstance | undefined {
+    const instance = getInstanceForDevice(instanceId, deviceId);
+    if (instance === undefined) {
+      return undefined;
+    }
+    return stopInstance(instanceId);
+  }
+
+  return { startInstance, getInstance, getInstanceForDevice, listInstancesForDevice, getProcess, stopInstance, stopInstanceForDevice, repository };
 }
 
 export type InstanceService = ReturnType<typeof createInstanceService>;
