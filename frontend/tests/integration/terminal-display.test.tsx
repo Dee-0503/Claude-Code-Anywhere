@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import { SERVER_MESSAGE_TYPES, type OutputMessagePayload } from "../../../shared/protocol/messages.js";
 import { TerminalSearch, countTerminalSearchMatches, locateTerminalSearchMatch } from "../../src/components/TerminalSearch.js";
-import { appendTerminalOutput, scrollTerminalOutput } from "../../src/terminal/outputRenderer.js";
+import { createTerminalOutputSyncScheduler } from "../../src/terminal/TerminalView.js";
+import { appendTerminalOutput, getTerminalOutputText, scrollTerminalOutput, type TerminalOutputState } from "../../src/terminal/outputRenderer.js";
+
+function createOutputState(maxLength: number): TerminalOutputState {
+  return { chunks: [], visibleLength: 0, scrollOffset: 0, maxLength };
+}
 
 function renderSearch(
   output: string,
@@ -67,15 +72,68 @@ describe("terminal display", () => {
 
     const state = messages.reduce(
       (current, message) => appendTerminalOutput(current, message, terminal),
-      { text: "", scrollOffset: 0, maxLength: 10 },
+      createOutputState(10),
     );
 
     expect(terminal.write).toHaveBeenCalledWith("alpha\n");
     expect(terminal.write).toHaveBeenCalledWith("beta\n");
-    expect(state.text).toBe("lpha\nbeta\n");
+    expect(getTerminalOutputText(state)).toBe("lpha\nbeta\n");
     expect(state.scrollOffset).toBe(1);
 
     scrollTerminalOutput(state, terminal, 6);
     expect(terminal.scrollToLine).toHaveBeenCalledWith(1);
+  });
+
+  it("trims fallback output by dropping old chunks before slicing the leading chunk", () => {
+    const state = ["alpha\n", "beta\n", "gamma\n"].reduce(
+      (current, data, index) => appendTerminalOutput(current, {
+        type: SERVER_MESSAGE_TYPES.OUTPUT,
+        instance_id: "instance-id",
+        offset: index * 6,
+        data,
+      }, null),
+      createOutputState(11),
+    );
+
+    expect(state.chunks).toEqual(["beta\n", "gamma\n"]);
+    expect(state.visibleLength).toBe(11);
+    expect(state.scrollOffset).toBe(6);
+    expect(getTerminalOutputText(state)).toBe("beta\ngamma\n");
+  });
+
+  it("keeps fallback output bounded without rebuilding the whole string on append", () => {
+    const state = Array.from({ length: 80 }, (_, index) => `${index.toString().padStart(2, "0")}-chunk\n`).reduce(
+      (current, data, index) => appendTerminalOutput(current, {
+        type: SERVER_MESSAGE_TYPES.OUTPUT,
+        instance_id: "instance-id",
+        offset: index * data.length,
+        data,
+      }, null),
+      createOutputState(64),
+    );
+
+    expect(state.visibleLength).toBeLessThanOrEqual(64);
+    expect(getTerminalOutputText(state)).toBe(state.chunks.join(""));
+    expect(getTerminalOutputText(state)).toContain("79-chunk");
+  });
+
+  it("coalesces terminal view fallback text materialization across output bursts", () => {
+    vi.useFakeTimers();
+    const materialize = vi.fn(() => "rendered output");
+    const publish = vi.fn();
+    const schedule = createTerminalOutputSyncScheduler(materialize, publish);
+
+    schedule();
+    schedule();
+    schedule();
+
+    expect(materialize).not.toHaveBeenCalled();
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(materialize).toHaveBeenCalledTimes(1);
+    expect(publish).toHaveBeenCalledWith("rendered output");
+    vi.useRealTimers();
   });
 });

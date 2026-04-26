@@ -11,7 +11,7 @@ export interface TerminalScale {
 
 export interface TerminalScaleObserverOptions {
   readonly element: HTMLElement;
-  readonly characterWidth: number;
+  readonly getCharacterWidth: () => number;
   readonly onScaleChange: (scale: TerminalScale) => void;
 }
 
@@ -22,6 +22,17 @@ export interface TerminalScaleObserver {
 
 const TERMINAL_COLUMNS = 120;
 const MINIMUM_SCALE = 0.5;
+const DEFAULT_CHARACTER_WIDTH = 8;
+
+export function measureTerminalCharacterWidth(element: HTMLElement, fallback = DEFAULT_CHARACTER_WIDTH): number {
+  const measuredElement = element.querySelector(".xterm-char-measure-element");
+  if (!(measuredElement instanceof HTMLElement)) {
+    return fallback;
+  }
+
+  const width = measuredElement.getBoundingClientRect().width;
+  return width > 0 ? width : fallback;
+}
 
 export function calculateTerminalScale(input: TerminalScaleInput): TerminalScale {
   const contentWidth = TERMINAL_COLUMNS * input.characterWidth;
@@ -43,7 +54,7 @@ export function createTerminalScaleObserver(options: TerminalScaleObserverOption
   function recalculate(): void {
     options.onScaleChange(calculateTerminalScale({
       containerWidth: options.element.clientWidth,
-      characterWidth: options.characterWidth,
+      characterWidth: options.getCharacterWidth(),
     }));
   }
 

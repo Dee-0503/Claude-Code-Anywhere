@@ -9,7 +9,8 @@ export interface TerminalOutputScroller {
 }
 
 export interface TerminalOutputState {
-  readonly text: string;
+  readonly chunks: readonly string[];
+  readonly visibleLength: number;
   readonly scrollOffset: number;
   readonly maxLength: number;
 }
@@ -24,14 +25,41 @@ export function appendTerminalOutput(
   }
 
   writer?.write(message.data);
-  const nextText = `${state.text}${message.data}`;
-  const trimmedText = nextText.slice(-state.maxLength);
+  const chunks = [...state.chunks, message.data];
+  let visibleLength = state.visibleLength + message.data.length;
+  let scrollOffset = state.scrollOffset;
+
+  while (chunks.length > 0) {
+    const firstChunk = chunks[0];
+    if (firstChunk === undefined || visibleLength - firstChunk.length < state.maxLength) {
+      break;
+    }
+
+    chunks.shift();
+    visibleLength -= firstChunk.length;
+    scrollOffset += firstChunk.length;
+  }
+
+  if (visibleLength > state.maxLength) {
+    const firstChunk = chunks[0];
+    if (firstChunk !== undefined) {
+      const overflow = visibleLength - state.maxLength;
+      chunks[0] = firstChunk.slice(overflow);
+      visibleLength -= overflow;
+      scrollOffset += overflow;
+    }
+  }
 
   return {
     ...state,
-    text: trimmedText,
-    scrollOffset: nextText.length - trimmedText.length,
+    chunks,
+    visibleLength,
+    scrollOffset,
   };
+}
+
+export function getTerminalOutputText(state: TerminalOutputState): string {
+  return state.chunks.join("");
 }
 
 export function scrollTerminalOutput(state: TerminalOutputState, scroller: TerminalOutputScroller | null, outputOffset: number): void {
@@ -41,6 +69,6 @@ export function scrollTerminalOutput(state: TerminalOutputState, scroller: Termi
   }
 
   const visibleOffset = outputOffset - state.scrollOffset;
-  const line = state.text.slice(0, visibleOffset).split("\n").length - 1;
+  const line = getTerminalOutputText(state).slice(0, visibleOffset).split("\n").length - 1;
   scroller?.scrollToLine(line);
 }
