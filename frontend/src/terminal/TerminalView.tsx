@@ -7,8 +7,8 @@ import type { ClaudeInstanceId, DeviceId, InputMessageId } from "../../../shared
 import { ConnectionStatus, type DisplayConnectionState } from "../components/ConnectionStatus.js";
 import { OfflineInputConfirm } from "../components/OfflineInputConfirm.js";
 import { TerminalSearch } from "../components/TerminalSearch.js";
-import { appendTerminalOutput, scrollTerminalOutput, type TerminalOutputState } from "./outputRenderer.js";
-import { calculateTerminalScale, createTerminalScaleObserver } from "./scaling.js";
+import { appendTerminalOutput, getTerminalOutputText, scrollTerminalOutput, type TerminalOutputState } from "./outputRenderer.js";
+import { calculateTerminalScale, createTerminalScaleObserver, measureTerminalCharacterWidth } from "./scaling.js";
 import type { ProtocolClient, ProtocolClientStatus } from "../protocol/client.js";
 import type { DeviceCredentials } from "../protocol/device-credentials.js";
 import { createInputRecoveryClient, type InputRecoveryClient, type PendingInput } from "../protocol/input-client.js";
@@ -28,7 +28,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fallbackBufferRef = useRef("");
-  const outputStateRef = useRef<TerminalOutputState>({ text: "", scrollOffset: 0, maxLength: 1_000_000 });
+  const outputStateRef = useRef<TerminalOutputState>({ chunks: [], visibleLength: 0, scrollOffset: 0, maxLength: 1_000_000 });
   const inputClientRef = useRef<InputRecoveryClient | null>(null);
   const [status, setStatus] = useState<ProtocolClientStatus>(client.status);
   const [connectionState, setConnectionState] = useState<DisplayConnectionState>(client.status);
@@ -51,11 +51,12 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
     }
 
     const measuredWidth = containerRef.current.clientWidth || 960;
-    const nextScale = calculateTerminalScale({ containerWidth: measuredWidth, characterWidth: 8 });
+    const getCharacterWidth = () => measureTerminalCharacterWidth(containerRef.current ?? document.body);
+    const nextScale = calculateTerminalScale({ containerWidth: measuredWidth, characterWidth: getCharacterWidth() });
     setTerminalScale(nextScale);
     const scaleObserver = createTerminalScaleObserver({
       element: containerRef.current,
-      characterWidth: 8,
+      getCharacterWidth,
       onScaleChange: setTerminalScale,
     });
 
@@ -102,8 +103,8 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           break;
         case SERVER_MESSAGE_TYPES.OUTPUT: {
           outputStateRef.current = appendTerminalOutput(outputStateRef.current, message, terminalRef.current);
-          fallbackBufferRef.current = outputStateRef.current.text;
-          setTerminalOutput(outputStateRef.current.text);
+          fallbackBufferRef.current = getTerminalOutputText(outputStateRef.current);
+          setTerminalOutput(fallbackBufferRef.current);
           const nextOffset = message.offset + message.data.length;
           saveLastOutputOffset(message.instance_id, nextOffset);
           client.acknowledgeOutput(message.instance_id, nextOffset);
