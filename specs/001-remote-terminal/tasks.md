@@ -164,8 +164,8 @@
 - [X] T062 [US5] Extend input queue with cancellation and interrupt classification in `backend/src/sessions/input-queue.ts`
 - [X] T063 [US5] Implement multi-client presence broadcast in `backend/src/sessions/presence-service.ts`
 - [X] T064 [US5] Implement queued input visibility messages in `shared/protocol/messages.ts`
-- [ ] T065 [US5] Implement queued input UI and cancel action in `frontend/src/components/InputQueuePanel.tsx`
-- [ ] T066 [US5] Implement explicit Ctrl+C confirmation UI in `frontend/src/components/InterruptConfirm.tsx`
+- [X] T065 [US5] Implement queued input UI and cancel action in `frontend/src/components/InputQueuePanel.tsx`
+- [X] T066 [US5] Implement explicit Ctrl+C confirmation UI in `frontend/src/components/InterruptConfirm.tsx`
 
 **Checkpoint**: Multi-client viewing and input coordination are independently verifiable.
 
