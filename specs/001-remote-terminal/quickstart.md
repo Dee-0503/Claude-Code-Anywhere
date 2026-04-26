@@ -59,7 +59,7 @@
 
 ## Validation Record
 
-- 2026-04-26: Automated scenario coverage verified with `npm test` on branch `001-remote-terminal`; result: 27 test files passed, 76 tests passed. This covers bootstrap pairing, auth/token security, WebSocket protocol, terminal attach/replay, weak-network input recovery, notifications/authorization, multi-device/instance management, multi-client coordination, mobile input helpers, display scaling/search/scroll, and team visualization. Manual browser/PTY validation remains required before release because this repository does not yet expose a production-ready end-to-end browser server script.
+- 2026-04-26: Automated scenario coverage verified with `npm test` on branch `001-remote-terminal`; result: 28 test files passed, 79 tests passed. This covers bootstrap pairing, auth/token security, WebSocket protocol, terminal attach/replay, weak-network input recovery, notifications/authorization, multi-device/instance management, multi-client coordination, mobile input helpers, display scaling/search/scroll, team visualization, output streaming performance boundaries, core coverage scoping, and production TLS configuration guidance. Manual browser/PTY validation remains required before release because this repository does not yet expose a production-ready end-to-end browser server script.
 
 ## Expected MVP Result
 

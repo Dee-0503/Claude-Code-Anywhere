@@ -20,7 +20,25 @@ Response:
       "id": "instance-id",
       "name": "main",
       "status": "running",
-      "last_active_at": "2026-04-25T12:00:00.000Z"
+      "last_active_at": "2026-04-25T12:00:00.000Z",
+      "team_metadata": {
+        "team_id": "team-1",
+        "teammate_id": "lead",
+        "teammate_name": "Lead"
+      }
+    }
+  ],
+  "team_sessions": [
+    {
+      "team_id": "team-1",
+      "teammates": [
+        {
+          "instance_id": "instance-id",
+          "instance_name": "main",
+          "teammate_id": "lead",
+          "teammate_name": "Lead"
+        }
+      ]
     }
   ]
 }
@@ -35,7 +53,12 @@ Request:
   "device_id": "device-id",
   "access_token": "token",
   "name": "main",
-  "cwd": "/Users/ceemac/my_product/Claude Code Anywhere"
+  "cwd": "/Users/ceemac/my_product/Claude Code Anywhere",
+  "team_metadata": {
+    "team_id": "team-1",
+    "teammate_id": "lead",
+    "teammate_name": "Lead"
+  }
 }
 ```
 
@@ -45,7 +68,12 @@ Response:
 {
   "id": "instance-id",
   "name": "main",
-  "status": "running"
+  "status": "running",
+  "team_metadata": {
+    "team_id": "team-1",
+    "teammate_id": "lead",
+    "teammate_name": "Lead"
+  }
 }
 ```
 
