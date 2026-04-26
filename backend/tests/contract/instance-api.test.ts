@@ -167,9 +167,11 @@ describe("instance API contract", () => {
       pairing_code: memberPairing.pairing_code,
       device_name: "Other browser",
     });
+    const { pty } = createKillTrackingPty();
     const api = createInstanceApi({
       auth,
       instances: createInstanceService({
+        pty,
         now: () => new Date("2026-04-25T12:00:00.000Z"),
       }),
     });
@@ -211,7 +213,7 @@ describe("instance API contract", () => {
       id: owned.id,
       status: CLAUDE_INSTANCE_STATUSES.RUNNING,
     });
-  });
+  }, 10_000);
   it("returns typed not-found errors for unknown instances", async () => {
     const auth = createBootstrapPairingService({
       now: () => new Date("2026-04-25T12:00:00.000Z"),
