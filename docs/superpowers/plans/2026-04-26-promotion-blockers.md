@@ -63,6 +63,7 @@
 ### Task 0: Prepare the fix branch
 
 **Files:**
+
 - No code files.
 
 - [ ] **Step 1: Confirm current branch and cleanliness**
@@ -105,6 +106,7 @@ Expected: a focused planning commit, or no commit if the plan was already commit
 ### Task 1: Add SQLite repository persistence and runtime wiring
 
 **Files:**
+
 - Modify: `backend/src/db/schema.sql`
 - Modify: `backend/src/db/migrations.ts`
 - Modify: `backend/src/auth/device-repository.ts`
@@ -146,7 +148,7 @@ function openRepositories() {
     devices: createSqliteDeviceRepository(database),
     pairings: createSqlitePairingRepository(database),
     instances: createSqliteInstanceRepository(database),
-    inputs: createSqliteInputRepository(database),
+    inputs: createSqliteInputRepository(database)
   };
 }
 
@@ -157,7 +159,12 @@ afterEach(() => {
 describe('SQLite runtime persistence', () => {
   it('persists devices and verifies tokens after repository restart', async () => {
     const first = openRepositories();
-    await first.devices.create({ id: 'device-a', name: 'Browser A', role: 'browser', tokenHash: 'hash' });
+    await first.devices.create({
+      id: 'device-a',
+      name: 'Browser A',
+      role: 'browser',
+      tokenHash: 'hash'
+    });
     first.database.close();
 
     const second = openRepositories();
@@ -168,8 +175,25 @@ describe('SQLite runtime persistence', () => {
 
   it('persists instance metadata and queued input state after repository restart', () => {
     const first = openRepositories();
-    first.instances.save({ id: 'instance-a', cwd: process.cwd(), status: 'running', createdByDeviceId: 'device-a', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), name: 'Persisted', teamMetadata: null });
-    first.inputs.save({ id: 'input-a', instanceId: 'instance-a', deviceId: 'device-a', payload: 'echo persisted\\n', status: 'queued', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    first.instances.save({
+      id: 'instance-a',
+      cwd: process.cwd(),
+      status: 'running',
+      createdByDeviceId: 'device-a',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      name: 'Persisted',
+      teamMetadata: null
+    });
+    first.inputs.save({
+      id: 'input-a',
+      instanceId: 'instance-a',
+      deviceId: 'device-a',
+      payload: 'echo persisted\\n',
+      status: 'queued',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
     first.database.close();
 
     const second = openRepositories();
@@ -206,7 +230,9 @@ export function createSqliteInputRepository(database: SqliteDatabase): InputRepo
 If notification state is implemented, export:
 
 ```ts
-export function createSqliteNotificationRepository(database: SqliteDatabase): NotificationRepository;
+export function createSqliteNotificationRepository(
+  database: SqliteDatabase
+): NotificationRepository;
 ```
 
 - [ ] **Step 4: Wire runtime to SQLite by default**
@@ -262,6 +288,7 @@ EOF
 ### Task 2: Enforce instance authorization boundaries
 
 **Files:**
+
 - Modify: `backend/src/sessions/instance-service.ts`
 - Modify: `backend/src/api/instance-routes.ts`
 - Modify: `backend/src/sessions/replay-service.ts`
@@ -297,14 +324,21 @@ Expected: FAIL because valid tokens are not yet scoped to instances.
 In `backend/src/sessions/instance-service.ts`, add methods equivalent to:
 
 ```ts
-function getAuthorizedInstance(input: { instanceId: ClaudeInstanceId; deviceId: DeviceId }): ClaudeInstance {
+function getAuthorizedInstance(input: {
+  instanceId: ClaudeInstanceId;
+  deviceId: DeviceId;
+}): ClaudeInstance {
   const instance = repository.get(input.instanceId);
   if (instance === undefined) throw serviceError('INSTANCE_NOT_FOUND', 'Instance not found');
-  if (instance.createdByDeviceId !== input.deviceId) throw serviceError('INSTANCE_FORBIDDEN', 'Device is not authorized for this instance');
+  if (instance.createdByDeviceId !== input.deviceId)
+    throw serviceError('INSTANCE_FORBIDDEN', 'Device is not authorized for this instance');
   return instance;
 }
 
-function stopAuthorizedInstance(input: { instanceId: ClaudeInstanceId; deviceId: DeviceId }): ClaudeInstance {
+function stopAuthorizedInstance(input: {
+  instanceId: ClaudeInstanceId;
+  deviceId: DeviceId;
+}): ClaudeInstance {
   getAuthorizedInstance(input);
   return stopInstance(input.instanceId)!;
 }
@@ -355,6 +389,7 @@ EOF
 ### Task 3: Harden WebSocket authenticated attach
 
 **Files:**
+
 - Modify: `backend/src/api/websocket-auth.ts`
 - Modify: `backend/src/api/websocket-server.ts`
 - Modify: `backend/src/api/websocket-protocol.ts`
@@ -395,7 +430,9 @@ export interface AuthenticatedWebSocketAttach {
   readonly instanceId: ClaudeInstanceId;
 }
 
-export async function authenticateWebSocketAttach(input: WebSocketAuthInput): Promise<AuthenticatedWebSocketAttach> {
+export async function authenticateWebSocketAttach(
+  input: WebSocketAuthInput
+): Promise<AuthenticatedWebSocketAttach> {
   const parsed = validateWebSocketHandshake(input);
   const device = await devices.verifyToken(parsed.deviceId, parsed.accessToken);
   if (device === undefined) throw serviceError('INVALID_DEVICE_TOKEN', 'Invalid device token');
@@ -437,6 +474,7 @@ EOF
 ### Task 4: Add P1 pairing and PTY hardening
 
 **Files:**
+
 - Modify: `backend/src/auth/pairing-service.ts`
 - Modify: `backend/src/auth/pairing-repository.ts`
 - Modify: `backend/src/db/schema.sql`
@@ -502,8 +540,8 @@ In `backend/src/sessions/instance-service.ts`, normalize requested `cwd` with `r
 Reject with clear service errors:
 
 ```ts
-'INSTANCE_CWD_FORBIDDEN'
-'INSTANCE_LIMIT_EXCEEDED'
+'INSTANCE_CWD_FORBIDDEN';
+'INSTANCE_LIMIT_EXCEEDED';
 ```
 
 - [ ] **Step 6: Enforce cwd at PTY spawn boundary**
@@ -537,6 +575,7 @@ EOF
 ### Task 5: Implement frontend xterm replay and reconnect recovery
 
 **Files:**
+
 - Modify: `frontend/src/terminal/TerminalView.tsx`
 - Modify: `frontend/src/protocol/client.ts`
 - Modify: `frontend/src/protocol/reconnect.ts`
@@ -644,6 +683,7 @@ EOF
 ### Task 6: Add regular code CI and repair formatting
 
 **Files:**
+
 - Create: `.github/workflows/code-ci.yml`
 - Modify: files reported by `npm run format:check`
 
@@ -743,6 +783,7 @@ If formatting touched a very large number of unrelated files, split into two com
 ### Task 7: Run full validation and browser acceptance
 
 **Files:**
+
 - No code files unless validation reveals a defect.
 
 - [ ] **Step 1: Run clean install**
@@ -804,6 +845,7 @@ If the project requires a validation artifact, create or update the existing val
 ### Task 8: Prepare delivery and phase audit
 
 **Files:**
+
 - No code files unless audit fixes are required.
 
 - [ ] **Step 1: Collect commit list**

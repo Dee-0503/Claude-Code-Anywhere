@@ -8,32 +8,32 @@
 
 ## 阶段总览
 
-| # | 阶段 | 交付物 | 状态 |
-|---|------|--------|------|
-| 1 | 功能规格 + UML 图 + PRD | spec.md + constitution.md + diagrams.md + PRD | ✅ 已完成 |
-| 2 | 原型 & UI 设计 | `UI_DESIGN.md`（线框图 + 交互说明 + 组件规范） | ⬜ 待开始 |
-| 3 | 技术设计文档 | plan.md + tasks.md（类图 + ER 图 + API 设计 + 技术选型） | ⬜ 待开始 |
+| #   | 阶段                    | 交付物                                                   | 状态      |
+| --- | ----------------------- | -------------------------------------------------------- | --------- |
+| 1   | 功能规格 + UML 图 + PRD | spec.md + constitution.md + diagrams.md + PRD            | ✅ 已完成 |
+| 2   | 原型 & UI 设计          | `UI_DESIGN.md`（线框图 + 交互说明 + 组件规范）           | ⬜ 待开始 |
+| 3   | 技术设计文档            | plan.md + tasks.md（类图 + ER 图 + API 设计 + 技术选型） | ⬜ 待开始 |
 
 ### 阶段 1 交付物清单
 
-| 文件 | 路径 | 说明 | 状态 |
-|---|---|---|---|
-| 项目宪法 | `.specify/memory/constitution.md` | 7 条核心原则 + 技术约束 + 质量门 (v1.1.0) | ✅ |
-| 功能规格 | `specs/001-remote-terminal/spec.md` | 8 用户故事 + 10 验收场景 + 20+ FR + 28+ SC + 5 Clarifications | ✅ |
-| 质量检查 | `specs/001-remote-terminal/checklists/requirements.md` | 初版检查（部分条目已过时） | ✅ |
-| 认证检查 | `specs/001-remote-terminal/checklists/auth-update.md` | 29 项，24 项已通过 clarify 解决 | ✅ |
-| 一致性检查 | `specs/001-remote-terminal/checklists/consistency.md` | 15 项，8 ✅ + 7 ⚠️（已分流到遗留跟踪） | ✅ |
-| 遗留跟踪 | `specs/001-remote-terminal/checklists/deferred-items.md` | 3 项清理 + 4 项延至 Phase 3 | ✅ |
-| UML 图集 | `specs/001-remote-terminal/diagrams.md` | 12 张 Mermaid 图 (v1.1) | ✅ |
-| **PRD** | `specs/001-remote-terminal/PRD.md` | **人类可读产品需求文档 v1.1.0（17 章，2190+ 行）** | **✅** |
+| 文件       | 路径                                                     | 说明                                                          | 状态   |
+| ---------- | -------------------------------------------------------- | ------------------------------------------------------------- | ------ |
+| 项目宪法   | `.specify/memory/constitution.md`                        | 7 条核心原则 + 技术约束 + 质量门 (v1.1.0)                     | ✅     |
+| 功能规格   | `specs/001-remote-terminal/spec.md`                      | 8 用户故事 + 10 验收场景 + 20+ FR + 28+ SC + 5 Clarifications | ✅     |
+| 质量检查   | `specs/001-remote-terminal/checklists/requirements.md`   | 初版检查（部分条目已过时）                                    | ✅     |
+| 认证检查   | `specs/001-remote-terminal/checklists/auth-update.md`    | 29 项，24 项已通过 clarify 解决                               | ✅     |
+| 一致性检查 | `specs/001-remote-terminal/checklists/consistency.md`    | 15 项，8 ✅ + 7 ⚠️（已分流到遗留跟踪）                        | ✅     |
+| 遗留跟踪   | `specs/001-remote-terminal/checklists/deferred-items.md` | 3 项清理 + 4 项延至 Phase 3                                   | ✅     |
+| UML 图集   | `specs/001-remote-terminal/diagrams.md`                  | 12 张 Mermaid 图 (v1.1)                                       | ✅     |
+| **PRD**    | `specs/001-remote-terminal/PRD.md`                       | **人类可读产品需求文档 v1.1.0（17 章，2190+ 行）**            | **✅** |
 
 ### 阶段 1 收尾任务
 
-| # | 任务 | 工具/技能 | 状态 |
-|---|------|----------|------|
-| 1 | 生成人类可读 PRD | `product-manager` + `writing-prds` skills | ✅ 已完成（v1.1.0） |
-| 2 | 清理 constitution Sync Impact Report | 手动编辑 | ✅ D-001 已完成 |
-| 3 | 更新旧版 requirements.md | 手动编辑 | ✅ D-002 已完成 |
+| #   | 任务                                 | 工具/技能                                 | 状态                |
+| --- | ------------------------------------ | ----------------------------------------- | ------------------- |
+| 1   | 生成人类可读 PRD                     | `product-manager` + `writing-prds` skills | ✅ 已完成（v1.1.0） |
+| 2   | 清理 constitution Sync Impact Report | 手动编辑                                  | ✅ D-001 已完成     |
+| 3   | 更新旧版 requirements.md             | 手动编辑                                  | ✅ D-002 已完成     |
 
 ---
 
@@ -44,6 +44,7 @@
 将 `PRODUCT_SPEC.md`、`DETAILED_REQUIREMENTS.md`、`CLARIFICATIONS.md` 合并为一份结构清晰的 PRD，消除重复内容，以澄清文档为最终决策。
 
 **输出结构**：
+
 1. 产品定位与非目标
 2. 用户角色
 3. 用户故事（US-01 ~ US-08，已整合澄清决策）
@@ -97,6 +98,7 @@
 用 Mermaid 绘制系统模块及依赖关系：
 
 **Backend 模块**：
+
 - WebSocket 服务（认证、心跳、多客户端管理）
 - PTY 管理器（创建/销毁、输入输出流）
 - 实例管理器（多实例生命周期）
@@ -107,6 +109,7 @@
 - 设备管理器（配对码、Token、SQLite 存储）
 
 **Frontend 模块**：
+
 - xterm.js 终端渲染器
 - 多设备连接管理器
 - 分窗格布局管理器（Agent Team）
@@ -202,6 +205,7 @@
 用 Mermaid 绘制核心类及关系：
 
 **Backend**：
+
 - `DeviceServer`（设备级别，管理实例和客户端连接）
 - `Instance`（实例级别，PTY + 状态 + 缓冲 + 队列）
 - `OutputBuffer`（环形缓冲区实现）
@@ -213,6 +217,7 @@
 - `AgentTeamDetector`（Hook 事件处理）
 
 **Frontend**：
+
 - `ConnectionManager`（WebSocket 连接管理）
 - `TerminalRenderer`（xterm.js 封装）
 - `PaneLayoutManager`（Agent Team 分窗格）
@@ -243,19 +248,19 @@
 
 ### 3.4 技术选型确认
 
-| 层 | 技术 | 备选 |
-|----|------|------|
-| Backend 运行时 | Node.js (ESM + TypeScript) | — |
-| PTY | `node-pty` | — |
-| WebSocket | `ws` | `socket.io` |
-| 数据库 | SQLite (`better-sqlite3`) | — |
-| Frontend 框架 | React / Next.js（待定） | Vue / Svelte |
-| 终端渲染 | `xterm.js` + addons | — |
-| 桌面应用 | Tauri v2 | Electron |
-| iOS | Swift + UIKit/SwiftUI | React Native |
-| Android | Kotlin + Jetpack Compose | React Native |
-| 推送 | APNs + FCM | — |
-| 外部通知 | 飞书 SDK（复用现有） | — |
+| 层             | 技术                       | 备选         |
+| -------------- | -------------------------- | ------------ |
+| Backend 运行时 | Node.js (ESM + TypeScript) | —            |
+| PTY            | `node-pty`                 | —            |
+| WebSocket      | `ws`                       | `socket.io`  |
+| 数据库         | SQLite (`better-sqlite3`)  | —            |
+| Frontend 框架  | React / Next.js（待定）    | Vue / Svelte |
+| 终端渲染       | `xterm.js` + addons        | —            |
+| 桌面应用       | Tauri v2                   | Electron     |
+| iOS            | Swift + UIKit/SwiftUI      | React Native |
+| Android        | Kotlin + Jetpack Compose   | React Native |
+| 推送           | APNs + FCM                 | —            |
+| 外部通知       | 飞书 SDK（复用现有）       | —            |
 
 ### 3.5 目录结构设计
 
@@ -305,8 +310,8 @@ claude-code-anywhere/
 
 详见 `specs/001-remote-terminal/checklists/deferred-items.md`
 
-| Phase | Open Items | Summary |
-|-------|-----------|---------|
-| Phase 1 清理 | 0 | ✅ 已完成（源检查清单文件已清理） |
-| Phase 2 原型 & UI | 1 | D-003：WebUI 配对码管理独立 FR（主闭环） |
-| Phase 3 技术设计 | 4 | server_id 格式、术语统一、客户端校验、Hub FR |
+| Phase             | Open Items | Summary                                      |
+| ----------------- | ---------- | -------------------------------------------- |
+| Phase 1 清理      | 0          | ✅ 已完成（源检查清单文件已清理）            |
+| Phase 2 原型 & UI | 1          | D-003：WebUI 配对码管理独立 FR（主闭环）     |
+| Phase 3 技术设计  | 4          | server_id 格式、术语统一、客户端校验、Hub FR |

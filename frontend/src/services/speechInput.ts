@@ -13,9 +13,9 @@ export function createSpeechInputAdapter(options: SpeechInputAdapterOptions): Sp
     available: options.available,
     async start() {
       if (!options.available || options.start === undefined) {
-        throw new Error("Speech input is unavailable");
+        throw new Error('Speech input is unavailable');
       }
       return options.start();
-    },
+    }
   };
 }

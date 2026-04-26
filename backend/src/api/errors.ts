@@ -2,9 +2,9 @@ import {
   type ErrorCode,
   type ErrorMessagePayload,
   isRetryableErrorCode,
-  PROTOCOL_ERROR_CODES,
-} from "../../../shared/protocol/errors.js";
-import { SERVER_MESSAGE_TYPES } from "../../../shared/protocol/messages.js";
+  PROTOCOL_ERROR_CODES
+} from '../../../shared/protocol/errors.js';
+import { SERVER_MESSAGE_TYPES } from '../../../shared/protocol/messages.js';
 
 interface ApiErrorOptions {
   readonly statusCode?: number;
@@ -19,13 +19,9 @@ export class ApiError extends Error {
   readonly retryable: boolean;
   readonly details?: Record<string, unknown>;
 
-  constructor(
-    code: ErrorCode,
-    message: string,
-    options: ApiErrorOptions = {},
-  ) {
+  constructor(code: ErrorCode, message: string, options: ApiErrorOptions = {}) {
     super(message, { cause: options.cause });
-    this.name = "ApiError";
+    this.name = 'ApiError';
     this.code = code;
     this.statusCode = options.statusCode ?? 400;
     this.retryable = options.retryable ?? isRetryableErrorCode(code);
@@ -39,30 +35,23 @@ export class ApiError extends Error {
 export function createApiError(
   code: ErrorCode,
   message: string,
-  options: ApiErrorOptions = {},
+  options: ApiErrorOptions = {}
 ): ApiError {
   return new ApiError(code, message, options);
 }
 
-export function invalidRequest(
-  message: string,
-  details?: Record<string, unknown>,
-): ApiError {
+export function invalidRequest(message: string, details?: Record<string, unknown>): ApiError {
   return new ApiError(PROTOCOL_ERROR_CODES.INVALID_MESSAGE, message, {
     statusCode: 400,
-    ...(details === undefined ? {} : { details }),
+    ...(details === undefined ? {} : { details })
   });
 }
 
 export function internalError(cause?: unknown): ApiError {
-  return new ApiError(
-    PROTOCOL_ERROR_CODES.INTERNAL_ERROR,
-    "Internal server error",
-    {
-      statusCode: 500,
-      cause,
-    },
-  );
+  return new ApiError(PROTOCOL_ERROR_CODES.INTERNAL_ERROR, 'Internal server error', {
+    statusCode: 500,
+    cause
+  });
 }
 
 export function normalizeError(error: unknown): ApiError {
@@ -83,6 +72,6 @@ export function toErrorPayload(error: ApiError): ErrorMessagePayload {
     code: error.code,
     message: error.message,
     retryable: error.retryable,
-    ...(error.details === undefined ? {} : { details: error.details }),
+    ...(error.details === undefined ? {} : { details: error.details })
   };
 }

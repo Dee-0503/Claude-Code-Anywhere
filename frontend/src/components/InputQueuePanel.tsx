@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement } from 'react';
 
 export interface InputQueuePanelItem {
   readonly inputId: string;
@@ -8,12 +8,12 @@ export interface InputQueuePanelItem {
 
 export function renderInputQueuePanel(inputs: readonly InputQueuePanelItem[]): string {
   if (inputs.length === 0) {
-    return "没有等待发送的输入。";
+    return '没有等待发送的输入。';
   }
 
   const details = inputs.map((input) => `${input.deviceId}：${input.payload.trim()}`);
 
-  return `${inputs.length} 条输入等待发送。${details.join("。")}`;
+  return `${inputs.length} 条输入等待发送。${details.join('。')}`;
 }
 
 export interface InputQueuePanelProps {
@@ -29,7 +29,9 @@ export function InputQueuePanel({ inputs, onCancel }: InputQueuePanelProps): Rea
         {inputs.map((input) => (
           <li key={input.inputId}>
             {input.deviceId}：{input.payload}
-            <button type="button" onClick={() => onCancel?.(input.inputId)}>取消</button>
+            <button type="button" onClick={() => onCancel?.(input.inputId)}>
+              取消
+            </button>
           </li>
         ))}
       </ul>

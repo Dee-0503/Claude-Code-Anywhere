@@ -6,6 +6,12 @@
     "jsx": "react-jsx",
     "types": ["vitest/globals"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "../shared/protocol/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "../shared/protocol/**/*.ts"
+  ],
   "exclude": ["dist", "node_modules"]
 }

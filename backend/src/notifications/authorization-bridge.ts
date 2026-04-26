@@ -1,8 +1,11 @@
-import type { DeviceId, NotificationEventId } from "../../../shared/protocol/domain.js";
-import { NOTIFICATION_EVENT_TYPES, NOTIFICATION_PRIORITIES } from "../../../shared/protocol/domain.js";
-import type { NotificationService } from "./notification-service.js";
+import type { DeviceId, NotificationEventId } from '../../../shared/protocol/domain.js';
+import {
+  NOTIFICATION_EVENT_TYPES,
+  NOTIFICATION_PRIORITIES
+} from '../../../shared/protocol/domain.js';
+import type { NotificationService } from './notification-service.js';
 
-export type AuthorizationDecision = "approved" | "rejected";
+export type AuthorizationDecision = 'approved' | 'rejected';
 
 export interface AuthorizationRequestInput {
   readonly instanceId: string;
@@ -24,11 +27,14 @@ export interface AuthorizationBridgeOptions {
 }
 
 export function createAuthorizationBridge(options: AuthorizationBridgeOptions) {
-  const pending = new Map<NotificationEventId, {
-    readonly decision: Promise<AuthorizationDecisionResult>;
-    readonly resolve: (decision: AuthorizationDecisionResult) => void;
-    resolved: boolean;
-  }>();
+  const pending = new Map<
+    NotificationEventId,
+    {
+      readonly decision: Promise<AuthorizationDecisionResult>;
+      readonly resolve: (decision: AuthorizationDecisionResult) => void;
+      resolved: boolean;
+    }
+  >();
   const resolvedRequests = new Set<NotificationEventId>();
 
   function createPermissionRequest(input: AuthorizationRequestInput) {
@@ -37,7 +43,7 @@ export function createAuthorizationBridge(options: AuthorizationBridgeOptions) {
       type: NOTIFICATION_EVENT_TYPES.PERMISSION_REQUEST,
       priority: NOTIFICATION_PRIORITIES.URGENT,
       title: input.title,
-      body: input.body,
+      body: input.body
     });
     let resolver: (decision: AuthorizationDecisionResult) => void = () => undefined;
     const decision = new Promise<AuthorizationDecisionResult>((resolve) => {
@@ -48,11 +54,14 @@ export function createAuthorizationBridge(options: AuthorizationBridgeOptions) {
     return {
       notificationId: notification.id,
       decision,
-      status: () => resolvedRequests.has(notification.id) ? "resolved" : "waiting",
+      status: () => (resolvedRequests.has(notification.id) ? 'resolved' : 'waiting')
     };
   }
 
-  async function resolve(notificationId: NotificationEventId, input: ResolveAuthorizationInput): Promise<void> {
+  async function resolve(
+    notificationId: NotificationEventId,
+    input: ResolveAuthorizationInput
+  ): Promise<void> {
     const request = pending.get(notificationId);
     if (request === undefined || request.resolved) {
       return;

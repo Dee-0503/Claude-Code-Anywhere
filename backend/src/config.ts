@@ -1,8 +1,8 @@
-import { existsSync, statSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-export type TlsMode = "off";
-export type RepositoryMode = "sqlite" | "memory";
+export type TlsMode = 'off';
+export type RepositoryMode = 'sqlite' | 'memory';
 
 export interface AppConfig {
   readonly host: string;
@@ -26,29 +26,29 @@ export interface ConfigEnvironment {
 }
 
 const DEFAULT_CONFIG: AppConfig = {
-  host: "127.0.0.1",
+  host: '127.0.0.1',
   port: 5178,
-  databasePath: resolve(process.cwd(), "data", "claude-code-anywhere.sqlite"),
-  repositoryMode: "sqlite",
-  tlsMode: "off",
+  databasePath: resolve(process.cwd(), 'data', 'claude-code-anywhere.sqlite'),
+  repositoryMode: 'sqlite',
+  tlsMode: 'off',
   trustReverseProxy: false,
   outputBufferBytes: 1024 * 1024,
   heartbeatIntervalMs: 15_000,
   heartbeatTimeoutMs: 45_000,
-  websocketPath: "/ws",
+  websocketPath: '/ws',
   websocketAllowedOrigins: [],
   instanceAllowedWorkspaceRoots: [process.cwd()],
   instanceMaxActivePerDevice: 4,
-  instanceMaxActiveGlobal: 16,
+  instanceMaxActiveGlobal: 16
 };
 
 function readInteger(
   value: string | undefined,
   fallback: number,
   name: string,
-  options: { min?: number; max?: number } = {},
+  options: { min?: number; max?: number } = {}
 ): number {
-  if (value === undefined || value.trim() === "") {
+  if (value === undefined || value.trim() === '') {
     return fallback;
   }
 
@@ -69,27 +69,29 @@ function readInteger(
 }
 
 function readTlsMode(value: string | undefined): TlsMode {
-  if (value === undefined || value.trim() === "" || value === "off") {
+  if (value === undefined || value.trim() === '' || value === 'off') {
     return DEFAULT_CONFIG.tlsMode;
   }
 
-  if (value === "self-signed" || value === "provided") {
-    throw new Error(`CCA_TLS_MODE=${value} is not supported; terminate TLS at a trusted reverse proxy`);
+  if (value === 'self-signed' || value === 'provided') {
+    throw new Error(
+      `CCA_TLS_MODE=${value} is not supported; terminate TLS at a trusted reverse proxy`
+    );
   }
 
-  throw new Error("CCA_TLS_MODE must be off");
+  throw new Error('CCA_TLS_MODE must be off');
 }
 
 function readBoolean(value: string | undefined, fallback: boolean, name: string): boolean {
-  if (value === undefined || value.trim() === "") {
+  if (value === undefined || value.trim() === '') {
     return fallback;
   }
 
-  if (value === "true") {
+  if (value === 'true') {
     return true;
   }
 
-  if (value === "false") {
+  if (value === 'false') {
     return false;
   }
 
@@ -97,46 +99,54 @@ function readBoolean(value: string | undefined, fallback: boolean, name: string)
 }
 
 function readTlsTerminationPath(value: string | undefined, name: string): void {
-  if (value !== undefined && value.trim() !== "") {
+  if (value !== undefined && value.trim() !== '') {
     throw new Error(`${name} is not supported; terminate TLS at a trusted reverse proxy`);
   }
 }
 
 function readRepositoryMode(value: string | undefined): RepositoryMode {
-  if (value === undefined || value.trim() === "") {
+  if (value === undefined || value.trim() === '') {
     return DEFAULT_CONFIG.repositoryMode;
   }
 
-  if (value === "sqlite" || value === "memory") {
+  if (value === 'sqlite' || value === 'memory') {
     return value;
   }
 
-  throw new Error("CCA_REPOSITORY_MODE must be sqlite or memory");
+  throw new Error('CCA_REPOSITORY_MODE must be sqlite or memory');
 }
 
 function readWebSocketPath(value: string | undefined): string {
   const path = value?.trim() || DEFAULT_CONFIG.websocketPath;
-  if (!path.startsWith("/")) {
-    throw new Error("CCA_WEBSOCKET_PATH must start with /");
+  if (!path.startsWith('/')) {
+    throw new Error('CCA_WEBSOCKET_PATH must start with /');
   }
   return path;
 }
 
 function readWebSocketAllowedOrigins(value: string | undefined): readonly string[] {
-  if (value === undefined || value.trim() === "") {
+  if (value === undefined || value.trim() === '') {
     return DEFAULT_CONFIG.websocketAllowedOrigins;
   }
 
   return value
-    .split(",")
+    .split(',')
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
 }
 
-function readExistingDirectories(value: string | undefined, fallback: readonly string[], name: string): readonly string[] {
-  const paths = value === undefined || value.trim() === ""
-    ? fallback
-    : value.split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+function readExistingDirectories(
+  value: string | undefined,
+  fallback: readonly string[],
+  name: string
+): readonly string[] {
+  const paths =
+    value === undefined || value.trim() === ''
+      ? fallback
+      : value
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0);
   const resolvedPaths = paths.map((entry) => resolve(entry));
 
   if (resolvedPaths.length === 0) {
@@ -154,61 +164,61 @@ function readExistingDirectories(value: string | undefined, fallback: readonly s
 
 export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
   const host = env.CCA_HOST?.trim() || DEFAULT_CONFIG.host;
-  const port = readInteger(env.CCA_PORT, DEFAULT_CONFIG.port, "CCA_PORT", {
+  const port = readInteger(env.CCA_PORT, DEFAULT_CONFIG.port, 'CCA_PORT', {
     min: 1,
-    max: 65_535,
+    max: 65_535
   });
-  const databasePath = resolve(
-    env.CCA_DATABASE_PATH?.trim() || DEFAULT_CONFIG.databasePath,
-  );
+  const databasePath = resolve(env.CCA_DATABASE_PATH?.trim() || DEFAULT_CONFIG.databasePath);
   const repositoryMode = readRepositoryMode(env.CCA_REPOSITORY_MODE);
   const tlsMode = readTlsMode(env.CCA_TLS_MODE);
-  readTlsTerminationPath(env.CCA_TLS_CERT_PATH, "CCA_TLS_CERT_PATH");
-  readTlsTerminationPath(env.CCA_TLS_KEY_PATH, "CCA_TLS_KEY_PATH");
+  readTlsTerminationPath(env.CCA_TLS_CERT_PATH, 'CCA_TLS_CERT_PATH');
+  readTlsTerminationPath(env.CCA_TLS_KEY_PATH, 'CCA_TLS_KEY_PATH');
   const trustReverseProxy = readBoolean(
     env.CCA_TRUST_REVERSE_PROXY,
     DEFAULT_CONFIG.trustReverseProxy,
-    "CCA_TRUST_REVERSE_PROXY",
+    'CCA_TRUST_REVERSE_PROXY'
   );
-  if (env.NODE_ENV === "production" && tlsMode === "off" && !trustReverseProxy) {
-    throw new Error("CCA_TLS_MODE=off is only allowed in production when CCA_TRUST_REVERSE_PROXY=true");
+  if (env.NODE_ENV === 'production' && tlsMode === 'off' && !trustReverseProxy) {
+    throw new Error(
+      'CCA_TLS_MODE=off is only allowed in production when CCA_TRUST_REVERSE_PROXY=true'
+    );
   }
   const outputBufferBytes = readInteger(
     env.CCA_OUTPUT_BUFFER_BYTES,
     DEFAULT_CONFIG.outputBufferBytes,
-    "CCA_OUTPUT_BUFFER_BYTES",
-    { min: 1 },
+    'CCA_OUTPUT_BUFFER_BYTES',
+    { min: 1 }
   );
   const heartbeatIntervalMs = readInteger(
     env.CCA_HEARTBEAT_INTERVAL_MS,
     DEFAULT_CONFIG.heartbeatIntervalMs,
-    "CCA_HEARTBEAT_INTERVAL_MS",
-    { min: 1 },
+    'CCA_HEARTBEAT_INTERVAL_MS',
+    { min: 1 }
   );
   const heartbeatTimeoutMs = readInteger(
     env.CCA_HEARTBEAT_TIMEOUT_MS,
     DEFAULT_CONFIG.heartbeatTimeoutMs,
-    "CCA_HEARTBEAT_TIMEOUT_MS",
-    { min: heartbeatIntervalMs },
+    'CCA_HEARTBEAT_TIMEOUT_MS',
+    { min: heartbeatIntervalMs }
   );
   const websocketPath = readWebSocketPath(env.CCA_WEBSOCKET_PATH);
   const websocketAllowedOrigins = readWebSocketAllowedOrigins(env.CCA_WEBSOCKET_ALLOWED_ORIGINS);
   const instanceAllowedWorkspaceRoots = readExistingDirectories(
     env.CCA_INSTANCE_ALLOWED_WORKSPACE_ROOTS,
     DEFAULT_CONFIG.instanceAllowedWorkspaceRoots,
-    "CCA_INSTANCE_ALLOWED_WORKSPACE_ROOTS",
+    'CCA_INSTANCE_ALLOWED_WORKSPACE_ROOTS'
   );
   const instanceMaxActivePerDevice = readInteger(
     env.CCA_INSTANCE_MAX_ACTIVE_PER_DEVICE,
     DEFAULT_CONFIG.instanceMaxActivePerDevice,
-    "CCA_INSTANCE_MAX_ACTIVE_PER_DEVICE",
-    { min: 1 },
+    'CCA_INSTANCE_MAX_ACTIVE_PER_DEVICE',
+    { min: 1 }
   );
   const instanceMaxActiveGlobal = readInteger(
     env.CCA_INSTANCE_MAX_ACTIVE_GLOBAL,
     DEFAULT_CONFIG.instanceMaxActiveGlobal,
-    "CCA_INSTANCE_MAX_ACTIVE_GLOBAL",
-    { min: 1 },
+    'CCA_INSTANCE_MAX_ACTIVE_GLOBAL',
+    { min: 1 }
   );
 
   return {
@@ -225,7 +235,7 @@ export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
     websocketAllowedOrigins,
     instanceAllowedWorkspaceRoots,
     instanceMaxActivePerDevice,
-    instanceMaxActiveGlobal,
+    instanceMaxActiveGlobal
   };
 }
 

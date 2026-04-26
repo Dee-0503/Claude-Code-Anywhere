@@ -1,8 +1,15 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID } from 'node:crypto';
 
-import type { DeviceId, NotificationEvent, NotificationEventId } from "../../../shared/protocol/domain.js";
-import { NOTIFICATION_EVENT_STATUSES } from "../../../shared/protocol/domain.js";
-import { createInMemoryNotificationRepository, type NotificationRepository } from "./notification-repository.js";
+import type {
+  DeviceId,
+  NotificationEvent,
+  NotificationEventId
+} from '../../../shared/protocol/domain.js';
+import { NOTIFICATION_EVENT_STATUSES } from '../../../shared/protocol/domain.js';
+import {
+  createInMemoryNotificationRepository,
+  type NotificationRepository
+} from './notification-repository.js';
 
 export interface NotificationServiceOptions {
   readonly notifications?: NotificationRepository;
@@ -11,8 +18,8 @@ export interface NotificationServiceOptions {
 
 export interface EmitNotificationInput {
   readonly instanceId: string;
-  readonly type: NotificationEvent["type"];
-  readonly priority: NotificationEvent["priority"];
+  readonly type: NotificationEvent['type'];
+  readonly priority: NotificationEvent['priority'];
   readonly title: string;
   readonly body: string;
 }
@@ -26,7 +33,7 @@ export interface NotificationRouteTarget {
 export interface NotificationDelivery {
   readonly notificationId: NotificationEventId;
   readonly deviceId: DeviceId;
-  readonly status: "delivered";
+  readonly status: 'delivered';
 }
 
 export function createNotificationService(options: NotificationServiceOptions = {}) {
@@ -41,11 +48,14 @@ export function createNotificationService(options: NotificationServiceOptions = 
       priority: input.priority,
       title: input.title,
       body: input.body,
-      now: now(),
+      now: now()
     });
   }
 
-  function route(notificationId: NotificationEventId, targets: readonly NotificationRouteTarget[]): NotificationDelivery | undefined {
+  function route(
+    notificationId: NotificationEventId,
+    targets: readonly NotificationRouteTarget[]
+  ): NotificationDelivery | undefined {
     const target = targets
       .filter((candidate) => candidate.online)
       .sort((left, right) => left.priority - right.priority)[0];
@@ -54,7 +64,7 @@ export function createNotificationService(options: NotificationServiceOptions = 
     }
 
     notifications.markDelivered(notificationId, target.deviceId, now());
-    return { notificationId, deviceId: target.deviceId, status: "delivered" };
+    return { notificationId, deviceId: target.deviceId, status: 'delivered' };
   }
 
   function markRead(notificationId: NotificationEventId): void {

@@ -1,4 +1,4 @@
-import type { ClaudeInstanceId, DeviceId } from "../../../shared/protocol/domain.js";
+import type { ClaudeInstanceId, DeviceId } from '../../../shared/protocol/domain.js';
 
 export interface PresenceConnection {
   readonly connectionId: string;

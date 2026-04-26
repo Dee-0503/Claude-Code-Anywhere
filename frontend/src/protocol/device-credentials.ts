@@ -11,17 +11,22 @@ export interface PairingRequest {
 
 export type PairingHandler = (request: PairingRequest) => Promise<DeviceCredentials>;
 
-const DEVICE_CREDENTIALS_KEY = "cca.deviceCredentials";
+const DEVICE_CREDENTIALS_KEY = 'cca.deviceCredentials';
 
 function defaultPairingEndpoint(): string {
   return `${window.location.origin}/api/pairing/consume`;
 }
 
-export function saveDeviceCredentials(credentials: DeviceCredentials, storage: Storage = window.localStorage): void {
+export function saveDeviceCredentials(
+  credentials: DeviceCredentials,
+  storage: Storage = window.localStorage
+): void {
   storage.setItem(DEVICE_CREDENTIALS_KEY, JSON.stringify(credentials));
 }
 
-export function loadDeviceCredentials(storage: Storage = window.localStorage): DeviceCredentials | null {
+export function loadDeviceCredentials(
+  storage: Storage = window.localStorage
+): DeviceCredentials | null {
   const raw = storage.getItem(DEVICE_CREDENTIALS_KEY);
   if (raw === null) {
     return null;
@@ -29,16 +34,16 @@ export function loadDeviceCredentials(storage: Storage = window.localStorage): D
 
   try {
     const parsed = JSON.parse(raw) as Partial<DeviceCredentials>;
-    if (typeof parsed.device_id === "string" && typeof parsed.access_token === "string") {
-      return typeof parsed.role === "string"
+    if (typeof parsed.device_id === 'string' && typeof parsed.access_token === 'string') {
+      return typeof parsed.role === 'string'
         ? {
             device_id: parsed.device_id,
             access_token: parsed.access_token,
-            role: parsed.role,
+            role: parsed.role
           }
         : {
             device_id: parsed.device_id,
-            access_token: parsed.access_token,
+            access_token: parsed.access_token
           };
     }
   } catch {
@@ -50,9 +55,9 @@ export function loadDeviceCredentials(storage: Storage = window.localStorage): D
 
 export async function fetchPairingCredentials(request: PairingRequest): Promise<DeviceCredentials> {
   const response = await fetch(defaultPairingEndpoint(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request)
   });
 
   if (!response.ok) {

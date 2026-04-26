@@ -10,10 +10,7 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
-      include: [
-        'backend/src/**/*.ts',
-        'frontend/src/protocol/**/*.ts'
-      ],
+      include: ['backend/src/**/*.ts', 'frontend/src/protocol/**/*.ts'],
       exclude: [
         '**/*.d.ts',
         '**/*.test.{ts,tsx}',

@@ -1,10 +1,15 @@
-import { createHash, randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from 'node:crypto';
 
-import { DEVICE_ROLES, type Device, type DeviceId, type DeviceRole } from "../../../shared/protocol/domain.js";
-import { createApiError } from "../api/errors.js";
-import { createInMemoryDeviceRepository, type DeviceRepository } from "./device-repository.js";
-import { createInMemoryPairingRepository, type PairingRepository } from "./pairing-repository.js";
-import { generateToken, hashToken } from "./tokens.js";
+import {
+  DEVICE_ROLES,
+  type Device,
+  type DeviceId,
+  type DeviceRole
+} from '../../../shared/protocol/domain.js';
+import { createApiError } from '../api/errors.js';
+import { createInMemoryDeviceRepository, type DeviceRepository } from './device-repository.js';
+import { createInMemoryPairingRepository, type PairingRepository } from './pairing-repository.js';
+import { generateToken, hashToken } from './tokens.js';
 
 export interface PairingServiceOptions {
   readonly now?: () => Date;
@@ -49,9 +54,9 @@ function serviceError(code: string, message: string): Error & { code: string } {
 }
 
 function generatePairingCode(): string {
-  return `${randomInt(0, 1_000).toString().padStart(3, "0")}-${randomInt(0, 1_000)
+  return `${randomInt(0, 1_000).toString().padStart(3, '0')}-${randomInt(0, 1_000)
     .toString()
-    .padStart(3, "0")}`;
+    .padStart(3, '0')}`;
 }
 
 export function createBootstrapPairingService(options: PairingServiceOptions = {}) {
@@ -65,10 +70,16 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
   function attemptKey(input: ConsumePairingCodeInput): string {
     const requesterKey = input.requester_key?.trim();
     if (requesterKey !== undefined && requesterKey.length > 0) {
-      const digest = createHash("sha256").update("requester_key:").update(requesterKey).digest("hex");
+      const digest = createHash('sha256')
+        .update('requester_key:')
+        .update(requesterKey)
+        .digest('hex');
       return `pairing-consume:requester:${digest}`;
     }
-    const digest = createHash("sha256").update("pairing_code:").update(input.pairing_code).digest("hex");
+    const digest = createHash('sha256')
+      .update('pairing_code:')
+      .update(input.pairing_code)
+      .digest('hex');
     return `pairing-consume:code:${digest}`;
   }
 
@@ -77,7 +88,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
     if (state?.lockedUntil !== null && state?.lockedUntil !== undefined) {
       const lockedUntil = new Date(state.lockedUntil);
       if (lockedUntil.getTime() > timestamp.getTime()) {
-        throw serviceError("PAIRING_ATTEMPTS_LOCKED", "Pairing attempts temporarily locked");
+        throw serviceError('PAIRING_ATTEMPTS_LOCKED', 'Pairing attempts temporarily locked');
       }
       pairings.clearAttemptState(key);
     }
@@ -88,22 +99,24 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
       key,
       failedAt: timestamp,
       maxFailedAttempts: maxFailedPairingAttempts,
-      cooldownMs: pairingAttemptCooldownMs,
+      cooldownMs: pairingAttemptCooldownMs
     });
   }
 
-  async function verifyDeviceToken(input: AuthenticatedDeviceInput): Promise<Device & { device_id: string }> {
+  async function verifyDeviceToken(
+    input: AuthenticatedDeviceInput
+  ): Promise<Device & { device_id: string }> {
     const device = devices.getById(input.device_id);
     if (device?.revokedAt !== null && device?.revokedAt !== undefined) {
-      throw serviceError("DEVICE_REVOKED", "Device has been revoked");
+      throw serviceError('DEVICE_REVOKED', 'Device has been revoked');
     }
 
     const verified = await devices.verifyToken(input.device_id, input.access_token);
     if (verified === undefined) {
-      throw serviceError("INVALID_DEVICE_TOKEN", "Invalid device token");
+      throw serviceError('INVALID_DEVICE_TOKEN', 'Invalid device token');
     }
     if (verified.revokedAt !== null) {
-      throw serviceError("DEVICE_REVOKED", "Device has been revoked");
+      throw serviceError('DEVICE_REVOKED', 'Device has been revoked');
     }
 
     const updated = devices.updateLastSeen(verified.id, now().toISOString()) ?? verified;
@@ -113,7 +126,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
   async function createBootstrapPairingCode(): Promise<PairingCodeResponse> {
     const timestamp = now();
     if (devices.hasActiveAdmin() || pairings.activeBootstrap(timestamp) !== undefined) {
-      throw serviceError("BOOTSTRAP_PAIRING_ALREADY_ACTIVE", "Bootstrap pairing already exists");
+      throw serviceError('BOOTSTRAP_PAIRING_ALREADY_ACTIVE', 'Bootstrap pairing already exists');
     }
 
     const code = generatePairingCode();
@@ -124,16 +137,18 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
       createdByDeviceId: null,
       expiresAt,
       usedAt: null,
-      usedByDeviceId: null,
+      usedByDeviceId: null
     });
 
     return { pairing_code: code, expires_at: expiresAt };
   }
 
-  async function createPairingCode(input: AuthenticatedDeviceInput & { readonly target_name_hint?: string }): Promise<PairingCodeResponse> {
+  async function createPairingCode(
+    input: AuthenticatedDeviceInput & { readonly target_name_hint?: string }
+  ): Promise<PairingCodeResponse> {
     const admin = await verifyDeviceToken(input);
     if (admin.role !== DEVICE_ROLES.ADMIN) {
-      throw serviceError("ADMIN_REQUIRED", "Admin device required");
+      throw serviceError('ADMIN_REQUIRED', 'Admin device required');
     }
 
     const timestamp = now();
@@ -145,7 +160,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
       createdByDeviceId: admin.id,
       expiresAt,
       usedAt: null,
-      usedByDeviceId: null,
+      usedByDeviceId: null
     });
 
     return { pairing_code: code, expires_at: expiresAt };
@@ -159,15 +174,15 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
     const pairing = await pairings.findByCode(input.pairing_code);
     if (pairing === undefined) {
       recordFailedAttempt(key, timestamp);
-      throw serviceError("PAIRING_CODE_INVALID", "Invalid pairing code");
+      throw serviceError('PAIRING_CODE_INVALID', 'Invalid pairing code');
     }
     if (pairing.usedAt !== null) {
       recordFailedAttempt(key, timestamp);
-      throw serviceError("PAIRING_CODE_ALREADY_USED", "Pairing code already used");
+      throw serviceError('PAIRING_CODE_ALREADY_USED', 'Pairing code already used');
     }
     if (new Date(pairing.expiresAt).getTime() <= timestamp.getTime()) {
       recordFailedAttempt(key, timestamp);
-      throw serviceError("PAIRING_CODE_EXPIRED", "Pairing code expired");
+      throw serviceError('PAIRING_CODE_EXPIRED', 'Pairing code expired');
     }
 
     const accessToken = generateToken();
@@ -180,13 +195,13 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
       tokenHash: await hashToken(accessToken),
       createdAt: issuedAt,
       lastSeenAt: issuedAt,
-      revokedAt: null,
+      revokedAt: null
     });
     const claimed = pairings.claim(pairing.id, device.id, issuedAt, timestamp);
     if (claimed === undefined) {
       devices.delete(device.id);
       recordFailedAttempt(key, timestamp);
-      throw serviceError("PAIRING_CODE_ALREADY_USED", "Pairing code already used");
+      throw serviceError('PAIRING_CODE_ALREADY_USED', 'Pairing code already used');
     }
 
     pairings.clearAttemptState(key);
@@ -196,15 +211,15 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
   async function revokeDevice(input: RevokeDeviceInput): Promise<void> {
     const adminDeviceId = input.admin_device_id ?? input.device_id;
     if (adminDeviceId === undefined) {
-      throw serviceError("INVALID_DEVICE_TOKEN", "Admin device id is required");
+      throw serviceError('INVALID_DEVICE_TOKEN', 'Admin device id is required');
     }
 
     const admin = await verifyDeviceToken({
       device_id: adminDeviceId,
-      access_token: input.access_token,
+      access_token: input.access_token
     });
     if (admin.role !== DEVICE_ROLES.ADMIN) {
-      throw serviceError("ADMIN_REQUIRED", "Admin device required");
+      throw serviceError('ADMIN_REQUIRED', 'Admin device required');
     }
     devices.revoke(input.target_device_id, now().toISOString());
   }
@@ -214,7 +229,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
     createPairingCode,
     consumePairingCode,
     verifyDeviceToken,
-    revokeDevice,
+    revokeDevice
   };
 }
 

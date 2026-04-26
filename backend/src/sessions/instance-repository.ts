@@ -1,16 +1,23 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID } from 'node:crypto';
 
 import {
   CLAUDE_INSTANCE_STATUSES,
   type ClaudeInstance,
   type ClaudeInstanceId,
   type ClaudeInstanceTeamMetadata,
-  type DeviceId,
-} from "../../../shared/protocol/domain.js";
-import type { SqliteDatabase } from "../db/connection.js";
+  type DeviceId
+} from '../../../shared/protocol/domain.js';
+import type { SqliteDatabase } from '../db/connection.js';
 
 export interface InstanceRepository {
-  create(input: { cwd: string; createdByDeviceId: DeviceId; name?: string; ptyPid?: number | null; teamMetadata?: ClaudeInstanceTeamMetadata | null; now?: Date }): ClaudeInstance;
+  create(input: {
+    cwd: string;
+    createdByDeviceId: DeviceId;
+    name?: string;
+    ptyPid?: number | null;
+    teamMetadata?: ClaudeInstanceTeamMetadata | null;
+    now?: Date;
+  }): ClaudeInstance;
   get(instanceId: ClaudeInstanceId): ClaudeInstance | undefined;
   update(instance: ClaudeInstance): ClaudeInstance;
   list(): ClaudeInstance[];
@@ -19,7 +26,7 @@ export interface InstanceRepository {
 interface InstanceRow {
   id: string;
   name: string;
-  status: ClaudeInstance["status"];
+  status: ClaudeInstance['status'];
   pty_pid: number | null;
   cwd: string;
   created_by_device_id: string;
@@ -30,7 +37,7 @@ interface InstanceRow {
 }
 
 function mapTeamMetadata(json: string | null): ClaudeInstanceTeamMetadata | null {
-  return json === null ? null : JSON.parse(json) as ClaudeInstanceTeamMetadata;
+  return json === null ? null : (JSON.parse(json) as ClaudeInstanceTeamMetadata);
 }
 
 function mapInstance(row: InstanceRow): ClaudeInstance {
@@ -44,20 +51,20 @@ function mapInstance(row: InstanceRow): ClaudeInstance {
     teamMetadata: mapTeamMetadata(row.team_metadata_json),
     createdAt: row.created_at,
     lastActiveAt: row.last_active_at,
-    exitedAt: row.exited_at,
+    exitedAt: row.exited_at
   };
 }
 
 export function createSqliteInstanceRepository(database: SqliteDatabase): InstanceRepository {
-  const selectById = database.prepare("SELECT * FROM instances WHERE id = ?");
-  const selectAll = database.prepare("SELECT * FROM instances ORDER BY created_at, id");
+  const selectById = database.prepare('SELECT * FROM instances WHERE id = ?');
+  const selectAll = database.prepare('SELECT * FROM instances ORDER BY created_at, id');
 
   return {
     create(input) {
       const timestamp = (input.now ?? new Date()).toISOString();
       const instance: ClaudeInstance = {
         id: randomUUID(),
-        name: input.name ?? "Claude Code",
+        name: input.name ?? 'Claude Code',
         status: CLAUDE_INSTANCE_STATUSES.RUNNING,
         ptyPid: input.ptyPid ?? null,
         cwd: input.cwd,
@@ -65,15 +72,20 @@ export function createSqliteInstanceRepository(database: SqliteDatabase): Instan
         teamMetadata: input.teamMetadata ?? null,
         createdAt: timestamp,
         lastActiveAt: timestamp,
-        exitedAt: null,
+        exitedAt: null
       };
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO instances (id, name, status, pty_pid, cwd, created_by_device_id, team_metadata_json, created_at, last_active_at, exited_at)
         VALUES (@id, @name, @status, @ptyPid, @cwd, @createdByDeviceId, @teamMetadataJson, @createdAt, @lastActiveAt, @exitedAt)
-      `).run({
-        ...instance,
-        teamMetadataJson: instance.teamMetadata === null ? null : JSON.stringify(instance.teamMetadata),
-      });
+      `
+        )
+        .run({
+          ...instance,
+          teamMetadataJson:
+            instance.teamMetadata === null ? null : JSON.stringify(instance.teamMetadata)
+        });
       return instance;
     },
     get(instanceId) {
@@ -81,7 +93,9 @@ export function createSqliteInstanceRepository(database: SqliteDatabase): Instan
       return row === undefined ? undefined : mapInstance(row);
     },
     update(instance) {
-      database.prepare(`
+      database
+        .prepare(
+          `
         UPDATE instances
         SET name = @name,
             status = @status,
@@ -93,15 +107,18 @@ export function createSqliteInstanceRepository(database: SqliteDatabase): Instan
             last_active_at = @lastActiveAt,
             exited_at = @exitedAt
         WHERE id = @id
-      `).run({
-        ...instance,
-        teamMetadataJson: instance.teamMetadata === null ? null : JSON.stringify(instance.teamMetadata),
-      });
+      `
+        )
+        .run({
+          ...instance,
+          teamMetadataJson:
+            instance.teamMetadata === null ? null : JSON.stringify(instance.teamMetadata)
+        });
       return instance;
     },
     list() {
       return (selectAll.all() as InstanceRow[]).map(mapInstance);
-    },
+    }
   };
 }
 
@@ -113,7 +130,7 @@ export function createInMemoryInstanceRepository(): InstanceRepository {
       const timestamp = (input.now ?? new Date()).toISOString();
       const instance: ClaudeInstance = {
         id: randomUUID(),
-        name: input.name ?? "Claude Code",
+        name: input.name ?? 'Claude Code',
         status: CLAUDE_INSTANCE_STATUSES.RUNNING,
         ptyPid: input.ptyPid ?? null,
         cwd: input.cwd,
@@ -121,7 +138,7 @@ export function createInMemoryInstanceRepository(): InstanceRepository {
         teamMetadata: input.teamMetadata ?? null,
         createdAt: timestamp,
         lastActiveAt: timestamp,
-        exitedAt: null,
+        exitedAt: null
       };
       instances.set(instance.id, instance);
       return instance;
@@ -135,6 +152,6 @@ export function createInMemoryInstanceRepository(): InstanceRepository {
     },
     list() {
       return [...instances.values()];
-    },
+    }
   };
 }

@@ -1,8 +1,8 @@
-import type { ReactElement } from "react";
+import type { ReactElement } from 'react';
 
 export function renderPasteConfirm(payload: string): string {
   if (payload.length === 0) {
-    return "没有待确认的粘贴内容。";
+    return '没有待确认的粘贴内容。';
   }
 
   const lines = payload.split(/\r?\n/).filter((line) => line.length > 0);
@@ -15,7 +15,11 @@ export interface PasteConfirmProps {
   readonly onCancel?: () => void;
 }
 
-export function PasteConfirm({ payload, onConfirm, onCancel }: PasteConfirmProps): ReactElement | null {
+export function PasteConfirm({
+  payload,
+  onConfirm,
+  onCancel
+}: PasteConfirmProps): ReactElement | null {
   if (payload.length === 0) {
     return null;
   }
@@ -24,8 +28,12 @@ export function PasteConfirm({ payload, onConfirm, onCancel }: PasteConfirmProps
     <section aria-label="粘贴确认">
       <p>{renderPasteConfirm(payload)}</p>
       <pre>{payload}</pre>
-      <button type="button" onClick={() => onConfirm?.(payload)}>确认发送</button>
-      <button type="button" onClick={onCancel}>取消</button>
+      <button type="button" onClick={() => onConfirm?.(payload)}>
+        确认发送
+      </button>
+      <button type="button" onClick={onCancel}>
+        取消
+      </button>
     </section>
   );
 }

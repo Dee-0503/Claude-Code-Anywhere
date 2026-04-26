@@ -1,4 +1,9 @@
-import { CONNECTION_STATES, SERVER_MESSAGE_TYPES, type ConnectionState, type ConnectionStateMessagePayload } from "../../../shared/protocol/messages.js";
+import {
+  CONNECTION_STATES,
+  SERVER_MESSAGE_TYPES,
+  type ConnectionState,
+  type ConnectionStateMessagePayload
+} from '../../../shared/protocol/messages.js';
 
 export interface ConnectionStateTrackerOptions {
   readonly degradedAfterMs?: number;
@@ -15,7 +20,7 @@ export function createConnectionStateTracker(options: ConnectionStateTrackerOpti
   function serialize(state: ConnectionState): ConnectionStateMessagePayload {
     return {
       type: SERVER_MESSAGE_TYPES.CONNECTION_STATE,
-      state,
+      state
     };
   }
 

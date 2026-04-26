@@ -21,7 +21,7 @@ Build Claude Code Anywhere as a terminal-first remote access system for Claude C
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - PASS: Terminal-first architecture preserves PTY semantics instead of translating Claude Code into chat UI.
 - PASS: xterm.js is the canonical browser renderer for ANSI/TUI output.

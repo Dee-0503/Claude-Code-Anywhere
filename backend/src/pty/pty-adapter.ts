@@ -31,10 +31,10 @@ export interface PtyAdapter {
 
 export function validatePtySize(size: PtySize): void {
   if (!Number.isInteger(size.cols) || size.cols < 1) {
-    throw new Error("PTY cols must be a positive integer");
+    throw new Error('PTY cols must be a positive integer');
   }
 
   if (!Number.isInteger(size.rows) || size.rows < 1) {
-    throw new Error("PTY rows must be a positive integer");
+    throw new Error('PTY rows must be a positive integer');
   }
 }

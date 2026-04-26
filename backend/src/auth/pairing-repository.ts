@@ -1,6 +1,6 @@
-import type { DeviceId, PairingCode, PairingCodeId } from "../../../shared/protocol/domain.js";
-import type { SqliteDatabase } from "../db/connection.js";
-import { verifyToken } from "./tokens.js";
+import type { DeviceId, PairingCode, PairingCodeId } from '../../../shared/protocol/domain.js';
+import type { SqliteDatabase } from '../db/connection.js';
+import { verifyToken } from './tokens.js';
 
 export interface PairingAttemptState {
   readonly key: string;
@@ -20,8 +20,17 @@ export interface PairingRepository {
   create(pairing: PairingCode): PairingCode;
   findByCode(code: string): Promise<PairingCode | undefined>;
   activeBootstrap(now: Date): PairingCode | undefined;
-  markUsed(pairingId: PairingCodeId, usedByDeviceId: DeviceId, usedAt: string): PairingCode | undefined;
-  claim(pairingId: PairingCodeId, usedByDeviceId: DeviceId, usedAt: string, now: Date): PairingCode | undefined;
+  markUsed(
+    pairingId: PairingCodeId,
+    usedByDeviceId: DeviceId,
+    usedAt: string
+  ): PairingCode | undefined;
+  claim(
+    pairingId: PairingCodeId,
+    usedByDeviceId: DeviceId,
+    usedAt: string,
+    now: Date
+  ): PairingCode | undefined;
   getAttemptState(key: string): PairingAttemptState | undefined;
   recordFailedAttempt(input: RecordFailedPairingAttemptInput): PairingAttemptState;
   clearAttemptState(key: string): void;
@@ -43,7 +52,7 @@ function mapPairing(row: PairingRow): PairingCode {
     createdByDeviceId: row.created_by_device_id,
     expiresAt: row.expires_at,
     usedAt: row.used_at,
-    usedByDeviceId: row.used_by_device_id,
+    usedByDeviceId: row.used_by_device_id
   };
 }
 
@@ -59,34 +68,42 @@ function mapAttempt(row: PairingAttemptRow): PairingAttemptState {
     key: row.key,
     failedAttempts: row.failed_attempts,
     lockedUntil: row.locked_until,
-    lastFailedAt: row.last_failed_at,
+    lastFailedAt: row.last_failed_at
   };
 }
 
-function calculateFailedAttempt(input: RecordFailedPairingAttemptInput, current?: PairingAttemptState): PairingAttemptState {
+function calculateFailedAttempt(
+  input: RecordFailedPairingAttemptInput,
+  current?: PairingAttemptState
+): PairingAttemptState {
   const failedAttempts = (current?.failedAttempts ?? 0) + 1;
-  const lockedUntil = failedAttempts >= input.maxFailedAttempts
-    ? new Date(input.failedAt.getTime() + input.cooldownMs).toISOString()
-    : null;
+  const lockedUntil =
+    failedAttempts >= input.maxFailedAttempts
+      ? new Date(input.failedAt.getTime() + input.cooldownMs).toISOString()
+      : null;
   return {
     key: input.key,
     failedAttempts,
     lockedUntil,
-    lastFailedAt: input.failedAt.toISOString(),
+    lastFailedAt: input.failedAt.toISOString()
   };
 }
 
 export function createSqlitePairingRepository(database: SqliteDatabase): PairingRepository {
-  const selectAll = database.prepare("SELECT * FROM pairing_codes ORDER BY expires_at, id");
-  const selectById = database.prepare("SELECT * FROM pairing_codes WHERE id = ?");
-  const selectAttempt = database.prepare("SELECT * FROM pairing_attempts WHERE key = ?");
+  const selectAll = database.prepare('SELECT * FROM pairing_codes ORDER BY expires_at, id');
+  const selectById = database.prepare('SELECT * FROM pairing_codes WHERE id = ?');
+  const selectAttempt = database.prepare('SELECT * FROM pairing_attempts WHERE key = ?');
 
   return {
     create(pairing) {
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO pairing_codes (id, code_hash, created_by_device_id, expires_at, used_at, used_by_device_id)
         VALUES (@id, @codeHash, @createdByDeviceId, @expiresAt, @usedAt, @usedByDeviceId)
-      `).run(pairing);
+      `
+        )
+        .run(pairing);
       return pairing;
     },
     async findByCode(code) {
@@ -99,26 +116,35 @@ export function createSqlitePairingRepository(database: SqliteDatabase): Pairing
       return undefined;
     },
     activeBootstrap(now) {
-      const row = database.prepare(`
+      const row = database
+        .prepare(
+          `
         SELECT * FROM pairing_codes
         WHERE created_by_device_id IS NULL AND used_at IS NULL AND expires_at > ?
         ORDER BY expires_at ASC
         LIMIT 1
-      `).get(now.toISOString()) as PairingRow | undefined;
+      `
+        )
+        .get(now.toISOString()) as PairingRow | undefined;
       return row === undefined ? undefined : mapPairing(row);
     },
     markUsed(pairingId, usedByDeviceId, usedAt) {
-      database.prepare("UPDATE pairing_codes SET used_at = ?, used_by_device_id = ? WHERE id = ?")
+      database
+        .prepare('UPDATE pairing_codes SET used_at = ?, used_by_device_id = ? WHERE id = ?')
         .run(usedAt, usedByDeviceId, pairingId);
       const row = selectById.get(pairingId) as PairingRow | undefined;
       return row === undefined ? undefined : mapPairing(row);
     },
     claim(pairingId, usedByDeviceId, usedAt, now) {
-      const result = database.prepare(`
+      const result = database
+        .prepare(
+          `
         UPDATE pairing_codes
         SET used_at = ?, used_by_device_id = ?
         WHERE id = ? AND used_at IS NULL AND expires_at > ?
-      `).run(usedAt, usedByDeviceId, pairingId, now.toISOString());
+      `
+        )
+        .run(usedAt, usedByDeviceId, pairingId, now.toISOString());
       if (result.changes !== 1) return undefined;
       const row = selectById.get(pairingId) as PairingRow | undefined;
       return row === undefined ? undefined : mapPairing(row);
@@ -129,19 +155,23 @@ export function createSqlitePairingRepository(database: SqliteDatabase): Pairing
     },
     recordFailedAttempt(input) {
       const state = calculateFailedAttempt(input, this.getAttemptState(input.key));
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO pairing_attempts (key, failed_attempts, locked_until, last_failed_at)
         VALUES (@key, @failedAttempts, @lockedUntil, @lastFailedAt)
         ON CONFLICT(key) DO UPDATE SET
           failed_attempts = excluded.failed_attempts,
           locked_until = excluded.locked_until,
           last_failed_at = excluded.last_failed_at
-      `).run(state);
+      `
+        )
+        .run(state);
       return state;
     },
     clearAttemptState(key) {
-      database.prepare("DELETE FROM pairing_attempts WHERE key = ?").run(key);
-    },
+      database.prepare('DELETE FROM pairing_attempts WHERE key = ?').run(key);
+    }
   };
 }
 
@@ -200,6 +230,6 @@ export function createInMemoryPairingRepository(): PairingRepository {
     },
     clearAttemptState(key) {
       attempts.delete(key);
-    },
+    }
   };
 }

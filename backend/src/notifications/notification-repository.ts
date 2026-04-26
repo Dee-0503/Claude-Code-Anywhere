@@ -1,12 +1,16 @@
-import type { DeviceId, NotificationEvent, NotificationEventId } from "../../../shared/protocol/domain.js";
-import { NOTIFICATION_EVENT_STATUSES } from "../../../shared/protocol/domain.js";
-import type { SqliteDatabase } from "../db/connection.js";
+import type {
+  DeviceId,
+  NotificationEvent,
+  NotificationEventId
+} from '../../../shared/protocol/domain.js';
+import { NOTIFICATION_EVENT_STATUSES } from '../../../shared/protocol/domain.js';
+import type { SqliteDatabase } from '../db/connection.js';
 
 export interface CreateNotificationInput {
   readonly id: NotificationEventId;
   readonly instanceId: string;
-  readonly type: NotificationEvent["type"];
-  readonly priority: NotificationEvent["priority"];
+  readonly type: NotificationEvent['type'];
+  readonly priority: NotificationEvent['priority'];
   readonly title: string;
   readonly body: string;
   readonly now: Date;
@@ -16,7 +20,11 @@ export interface NotificationRepository {
   create(input: CreateNotificationInput): NotificationEvent;
   get(id: NotificationEventId): NotificationEvent | undefined;
   listByInstance(instanceId: string): NotificationEvent[];
-  markDelivered(id: NotificationEventId, deviceId: DeviceId, now: Date): NotificationEvent | undefined;
+  markDelivered(
+    id: NotificationEventId,
+    deviceId: DeviceId,
+    now: Date
+  ): NotificationEvent | undefined;
   markRead(id: NotificationEventId, now: Date): NotificationEvent | undefined;
 }
 
@@ -24,9 +32,9 @@ interface NotificationRow {
   id: string;
   instance_id: string;
   device_id: string | null;
-  type: NotificationEvent["type"];
-  priority: NotificationEvent["priority"];
-  status: NotificationEvent["status"];
+  type: NotificationEvent['type'];
+  priority: NotificationEvent['priority'];
+  status: NotificationEvent['status'];
   title: string;
   body: string;
   created_at: string;
@@ -48,13 +56,17 @@ function mapNotification(row: NotificationRow): NotificationEvent {
     createdAt: row.created_at,
     deliveredAt: row.delivered_at,
     readAt: row.read_at,
-    expiresAt: row.expires_at,
+    expiresAt: row.expires_at
   };
 }
 
-export function createSqliteNotificationRepository(database: SqliteDatabase): NotificationRepository {
-  const selectById = database.prepare("SELECT * FROM notifications WHERE id = ?");
-  const selectByInstance = database.prepare("SELECT * FROM notifications WHERE instance_id = ? ORDER BY created_at, id");
+export function createSqliteNotificationRepository(
+  database: SqliteDatabase
+): NotificationRepository {
+  const selectById = database.prepare('SELECT * FROM notifications WHERE id = ?');
+  const selectByInstance = database.prepare(
+    'SELECT * FROM notifications WHERE instance_id = ? ORDER BY created_at, id'
+  );
 
   return {
     create(input) {
@@ -70,12 +82,16 @@ export function createSqliteNotificationRepository(database: SqliteDatabase): No
         createdAt: input.now.toISOString(),
         deliveredAt: null,
         readAt: null,
-        expiresAt: null,
+        expiresAt: null
       };
-      database.prepare(`
+      database
+        .prepare(
+          `
         INSERT INTO notifications (id, instance_id, device_id, type, priority, status, title, body, created_at, delivered_at, read_at, expires_at)
         VALUES (@id, @instanceId, @deviceId, @type, @priority, @status, @title, @body, @createdAt, @deliveredAt, @readAt, @expiresAt)
-      `).run(notification);
+      `
+        )
+        .run(notification);
       return notification;
     },
     get(id) {
@@ -92,9 +108,12 @@ export function createSqliteNotificationRepository(database: SqliteDatabase): No
         ...existing,
         deviceId,
         status: NOTIFICATION_EVENT_STATUSES.DELIVERED,
-        deliveredAt: now.toISOString(),
+        deliveredAt: now.toISOString()
       };
-      database.prepare("UPDATE notifications SET device_id = ?, status = ?, delivered_at = ? WHERE id = ?")
+      database
+        .prepare(
+          'UPDATE notifications SET device_id = ?, status = ?, delivered_at = ? WHERE id = ?'
+        )
         .run(updated.deviceId, updated.status, updated.deliveredAt, id);
       return updated;
     },
@@ -104,12 +123,13 @@ export function createSqliteNotificationRepository(database: SqliteDatabase): No
       const updated: NotificationEvent = {
         ...existing,
         status: NOTIFICATION_EVENT_STATUSES.READ,
-        readAt: now.toISOString(),
+        readAt: now.toISOString()
       };
-      database.prepare("UPDATE notifications SET status = ?, read_at = ? WHERE id = ?")
+      database
+        .prepare('UPDATE notifications SET status = ?, read_at = ? WHERE id = ?')
         .run(updated.status, updated.readAt, id);
       return updated;
-    },
+    }
   };
 }
 
@@ -130,7 +150,7 @@ export function createInMemoryNotificationRepository(): NotificationRepository {
         createdAt: input.now.toISOString(),
         deliveredAt: null,
         readAt: null,
-        expiresAt: null,
+        expiresAt: null
       };
       notifications.set(notification.id, notification);
       return notification;
@@ -139,7 +159,9 @@ export function createInMemoryNotificationRepository(): NotificationRepository {
       return notifications.get(id);
     },
     listByInstance(instanceId) {
-      return [...notifications.values()].filter((notification) => notification.instanceId === instanceId);
+      return [...notifications.values()].filter(
+        (notification) => notification.instanceId === instanceId
+      );
     },
     markDelivered(id, deviceId, now) {
       const existing = notifications.get(id);
@@ -150,7 +172,7 @@ export function createInMemoryNotificationRepository(): NotificationRepository {
         ...existing,
         deviceId,
         status: NOTIFICATION_EVENT_STATUSES.DELIVERED,
-        deliveredAt: now.toISOString(),
+        deliveredAt: now.toISOString()
       };
       notifications.set(id, updated);
       return updated;
@@ -163,10 +185,10 @@ export function createInMemoryNotificationRepository(): NotificationRepository {
       const updated: NotificationEvent = {
         ...existing,
         status: NOTIFICATION_EVENT_STATUSES.READ,
-        readAt: now.toISOString(),
+        readAt: now.toISOString()
       };
       notifications.set(id, updated);
       return updated;
-    },
+    }
   };
 }

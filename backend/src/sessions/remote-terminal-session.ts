@@ -1,14 +1,23 @@
-import type { DeviceId } from "../../../shared/protocol/domain.js";
-import { PROTOCOL_ERROR_CODES } from "../../../shared/protocol/errors.js";
-import { CLIENT_MESSAGE_TYPES, SERVER_MESSAGE_TYPES, type ClientToServerMessage, type HelloMessagePayload, type ServerToClientMessage } from "../../../shared/protocol/messages.js";
-import { createBootstrapPairingService, type BootstrapPairingService } from "../auth/pairing-service.js";
-import { createConnectionStateTracker } from "../api/connection-state.js";
-import { createApiError } from "../api/errors.js";
-import { createInputQueue } from "./input-queue.js";
-import { injectReadyInput } from "./input-stream.js";
-import { BoundedOutputBuffer } from "./output-buffer.js";
-import { createPresenceService } from "./presence-service.js";
-import { replayOutput } from "./replay-service.js";
+import type { DeviceId } from '../../../shared/protocol/domain.js';
+import { PROTOCOL_ERROR_CODES } from '../../../shared/protocol/errors.js';
+import {
+  CLIENT_MESSAGE_TYPES,
+  SERVER_MESSAGE_TYPES,
+  type ClientToServerMessage,
+  type HelloMessagePayload,
+  type ServerToClientMessage
+} from '../../../shared/protocol/messages.js';
+import {
+  createBootstrapPairingService,
+  type BootstrapPairingService
+} from '../auth/pairing-service.js';
+import { createConnectionStateTracker } from '../api/connection-state.js';
+import { createApiError } from '../api/errors.js';
+import { createInputQueue } from './input-queue.js';
+import { injectReadyInput } from './input-stream.js';
+import { BoundedOutputBuffer } from './output-buffer.js';
+import { createPresenceService } from './presence-service.js';
+import { replayOutput } from './replay-service.js';
 
 interface HarnessOptions {
   readonly auth?: BootstrapPairingService;
@@ -47,7 +56,7 @@ class ScriptedPtyHarness {
         const inputs = this.inputsByInstance.get(instanceId) ?? [];
         inputs.push(data);
         this.inputsByInstance.set(instanceId, inputs);
-      },
+      }
     };
   }
 
@@ -57,9 +66,9 @@ class ScriptedPtyHarness {
 }
 
 export async function createRemoteTerminalSessionHarness(options: HarnessOptions = {}) {
-  const auth = options.auth ?? createBootstrapPairingService(
-    options.now === undefined ? {} : { now: options.now },
-  );
+  const auth =
+    options.auth ??
+    createBootstrapPairingService(options.now === undefined ? {} : { now: options.now });
   const pty = new ScriptedPtyHarness();
   const sessions = createHarnessSessionService(auth, pty, options);
 
@@ -69,7 +78,7 @@ export async function createRemoteTerminalSessionHarness(options: HarnessOptions
 function createHarnessSessionService(
   auth: BootstrapPairingService,
   pty: ScriptedPtyHarness,
-  options: HarnessOptions,
+  options: HarnessOptions
 ) {
   const buffers = new Map<string, BoundedOutputBuffer>();
   const deviceInstances = new Map<DeviceId, string>();
@@ -79,16 +88,20 @@ function createHarnessSessionService(
   const instanceNames = new Map<string, string>();
   const stoppedInstances = new Set<string>();
   const capacity = options.outputBufferBytes ?? 1024 * 1024;
-  const inputQueue = createInputQueue(
-    options.now === undefined ? {} : { now: options.now },
-  );
+  const inputQueue = createInputQueue(options.now === undefined ? {} : { now: options.now });
   const presence = createPresenceService();
-  const connectionsByInstance = new Map<string, Array<{
-    readonly connectionId: string;
-    readonly deviceId: string;
-    readonly messages: ServerToClientMessage[];
-  }>>();
-  const interruptConfirmationsByInstance = new Map<string, Array<{ inputId: string; deviceId: string }>>();
+  const connectionsByInstance = new Map<
+    string,
+    Array<{
+      readonly connectionId: string;
+      readonly deviceId: string;
+      readonly messages: ServerToClientMessage[];
+    }>
+  >();
+  const interruptConfirmationsByInstance = new Map<
+    string,
+    Array<{ inputId: string; deviceId: string }>
+  >();
 
   function connectionMessages(instanceId: string) {
     return connectionsByInstance.get(instanceId) ?? [];
@@ -106,8 +119,8 @@ function createHarnessSessionService(
       instance_id: instanceId,
       devices: presence.list(instanceId).map((connection) => ({
         device_id: connection.deviceId,
-        connection_id: connection.connectionId,
-      })),
+        connection_id: connection.connectionId
+      }))
     });
   }
 
@@ -116,12 +129,12 @@ function createHarnessSessionService(
       input_id: message.id,
       device_id: message.deviceId,
       payload: message.payload,
-      status: "queued" as const,
+      status: 'queued' as const
     }));
     broadcast(instanceId, {
       type: SERVER_MESSAGE_TYPES.QUEUED_INPUTS,
       instance_id: instanceId,
-      inputs,
+      inputs
     });
   }
 
@@ -136,16 +149,24 @@ function createHarnessSessionService(
 
   function assertDeviceCanAccessInstance(deviceId: DeviceId, instanceId: string): void {
     if (instanceOwners.get(instanceId) !== deviceId) {
-      throw createApiError(PROTOCOL_ERROR_CODES.INSTANCE_UNAVAILABLE, "Instance not found", {
+      throw createApiError(PROTOCOL_ERROR_CODES.INSTANCE_UNAVAILABLE, 'Instance not found', {
         statusCode: 404,
-        details: { instance_id: instanceId },
+        details: { instance_id: instanceId }
       });
     }
   }
 
   return {
-    async createInstance(input: { readonly device_id: string; readonly access_token: string; readonly name: string; readonly cwd: string }) {
-      await auth.verifyDeviceToken({ device_id: input.device_id, access_token: input.access_token });
+    async createInstance(input: {
+      readonly device_id: string;
+      readonly access_token: string;
+      readonly name: string;
+      readonly cwd: string;
+    }) {
+      await auth.verifyDeviceToken({
+        device_id: input.device_id,
+        access_token: input.access_token
+      });
       const instanceId = crypto.randomUUID();
       deviceInstances.set(input.device_id, instanceId);
       instanceOwners.set(instanceId, input.device_id);
@@ -155,42 +176,53 @@ function createHarnessSessionService(
       return {
         id: instanceId,
         name: input.name,
-        status: "running",
-        cwd: input.cwd,
+        status: 'running',
+        cwd: input.cwd
       };
     },
     listInstances() {
       return [...buffers.keys()].map((instanceId) => ({
         id: instanceId,
         name: instanceNames.get(instanceId) ?? instanceId,
-        status: stoppedInstances.has(instanceId) ? "exited" : "running",
+        status: stoppedInstances.has(instanceId) ? 'exited' : 'running'
       }));
     },
-    async stopInstance(input: { readonly device_id: string; readonly access_token: string; readonly instance_id: string }) {
-      await auth.verifyDeviceToken({ device_id: input.device_id, access_token: input.access_token });
+    async stopInstance(input: {
+      readonly device_id: string;
+      readonly access_token: string;
+      readonly instance_id: string;
+    }) {
+      await auth.verifyDeviceToken({
+        device_id: input.device_id,
+        access_token: input.access_token
+      });
       assertDeviceCanAccessInstance(input.device_id, input.instance_id);
       stoppedInstances.add(input.instance_id);
       return {
         id: input.instance_id,
-        status: "exited",
+        status: 'exited'
       };
     },
     async attachTerminal(input: AttachTerminalInput) {
-      await auth.verifyDeviceToken({ device_id: input.device_id, access_token: input.access_token });
-      const instanceId = input.instance_id ?? deviceInstances.get(input.device_id) ?? crypto.randomUUID();
+      await auth.verifyDeviceToken({
+        device_id: input.device_id,
+        access_token: input.access_token
+      });
+      const instanceId =
+        input.instance_id ?? deviceInstances.get(input.device_id) ?? crypto.randomUUID();
       if (input.instance_id !== undefined) {
         assertDeviceCanAccessInstance(input.device_id, input.instance_id);
       } else if (!instanceOwners.has(instanceId)) {
         instanceOwners.set(instanceId, input.device_id);
       }
-      instanceNames.set(instanceId, instanceNames.get(instanceId) ?? "Claude Code");
+      instanceNames.set(instanceId, instanceNames.get(instanceId) ?? 'Claude Code');
       deviceInstances.set(input.device_id, instanceId);
 
       const buffer = getBuffer(instanceId);
       const connectionState = createConnectionStateTracker({
         degradedAfterMs: 1_000,
         disconnectedAfterMs: 3_000,
-        ...(options.now === undefined ? {} : { now: options.now }),
+        ...(options.now === undefined ? {} : { now: options.now })
       });
       const messages: ServerToClientMessage[] = [];
       pty.register(instanceId, (data) => {
@@ -200,25 +232,25 @@ function createHarnessSessionService(
           type: SERVER_MESSAGE_TYPES.OUTPUT,
           instance_id: chunk.instanceId,
           offset: chunk.offset,
-          data: chunk.data,
+          data: chunk.data
         });
       });
       const firstMessage: HelloMessagePayload = {
         type: SERVER_MESSAGE_TYPES.HELLO,
-        server_id: "local-server-id",
+        server_id: 'local-server-id',
         instance_id: instanceId,
         connection_id: crypto.randomUUID(),
-        next_output_offset: buffer.snapshot.nextOffset,
+        next_output_offset: buffer.snapshot.nextOffset
       };
       presence.join({
         connectionId: firstMessage.connection_id,
         deviceId: input.device_id,
-        instanceId,
+        instanceId
       });
       const connection = {
         connectionId: firstMessage.connection_id,
         deviceId: input.device_id,
-        messages,
+        messages
       };
       const instanceConnections = connectionMessages(instanceId);
       connectionsByInstance.set(instanceId, [...instanceConnections, connection]);
@@ -244,14 +276,23 @@ function createHarnessSessionService(
       const replayNow = () => {
         const latestReplay = replayOutput(buffer, input.last_output_offset);
         const latestData = latestByInstance.get(instanceId);
-        const nonOutputMessages = messages.filter((message) => message.type !== SERVER_MESSAGE_TYPES.OUTPUT && message.type !== SERVER_MESSAGE_TYPES.OUTPUT_GAP);
+        const nonOutputMessages = messages.filter(
+          (message) =>
+            message.type !== SERVER_MESSAGE_TYPES.OUTPUT &&
+            message.type !== SERVER_MESSAGE_TYPES.OUTPUT_GAP
+        );
         if (latestData !== undefined && latestReplay.length === 0) {
-          messages.splice(0, messages.length, {
-            type: SERVER_MESSAGE_TYPES.OUTPUT,
-            instance_id: instanceId,
-            offset: input.last_output_offset,
-            data: latestData,
-          }, ...nonOutputMessages);
+          messages.splice(
+            0,
+            messages.length,
+            {
+              type: SERVER_MESSAGE_TYPES.OUTPUT,
+              instance_id: instanceId,
+              offset: input.last_output_offset,
+              data: latestData
+            },
+            ...nonOutputMessages
+          );
         } else if (latestReplay.length > 0) {
           messages.splice(0, messages.length, ...latestReplay, ...nonOutputMessages);
         }
@@ -267,7 +308,7 @@ function createHarnessSessionService(
           return buffer.snapshot.nextOffset;
         },
         async send(message: ClientToServerMessage) {
-          if ("instance_id" in message) {
+          if ('instance_id' in message) {
             assertDeviceCanAccessInstance(input.device_id, message.instance_id);
           }
           if (message.type === CLIENT_MESSAGE_TYPES.ACK_OUTPUT) {
@@ -278,9 +319,9 @@ function createHarnessSessionService(
               id: message.input_id,
               instanceId: message.instance_id,
               deviceId: input.device_id,
-              payload: message.payload,
+              payload: message.payload
             });
-            if (inputQueue.classify(message.payload) === "interrupt") {
+            if (inputQueue.classify(message.payload) === 'interrupt') {
               const confirmations = interruptConfirmationsByInstance.get(message.instance_id) ?? [];
               confirmations.push({ inputId: message.input_id, deviceId: input.device_id });
               interruptConfirmationsByInstance.set(message.instance_id, confirmations);
@@ -288,14 +329,14 @@ function createHarnessSessionService(
               injectReadyInput({
                 instanceId: message.instance_id,
                 queue: inputQueue,
-                process: pty.process(message.instance_id),
+                process: pty.process(message.instance_id)
               });
             }
             messages.push({
               type: SERVER_MESSAGE_TYPES.INPUT_ACK,
               instance_id: message.instance_id,
               input_id: message.input_id,
-              status: result.status,
+              status: result.status
             });
             broadcastQueuedInputs(message.instance_id);
             return;
@@ -312,14 +353,20 @@ function createHarnessSessionService(
               pty.process(message.instance_id).write(inputMessage.payload);
             }
             const confirmations = interruptConfirmationsByInstance.get(message.instance_id) ?? [];
-            interruptConfirmationsByInstance.set(message.instance_id, confirmations.filter((confirmation) => confirmation.inputId !== message.input_id));
+            interruptConfirmationsByInstance.set(
+              message.instance_id,
+              confirmations.filter((confirmation) => confirmation.inputId !== message.input_id)
+            );
             broadcastQueuedInputs(message.instance_id);
             return;
           }
           if (message.type === CLIENT_MESSAGE_TYPES.CANCEL_INTERRUPT) {
             inputQueue.cancel(message.instance_id, message.input_id);
             const confirmations = interruptConfirmationsByInstance.get(message.instance_id) ?? [];
-            interruptConfirmationsByInstance.set(message.instance_id, confirmations.filter((confirmation) => confirmation.inputId !== message.input_id));
+            interruptConfirmationsByInstance.set(
+              message.instance_id,
+              confirmations.filter((confirmation) => confirmation.inputId !== message.input_id)
+            );
             broadcastQueuedInputs(message.instance_id);
             return;
           }
@@ -354,13 +401,16 @@ function createHarnessSessionService(
         presence() {
           return presence.list(instanceId);
         },
-        async queueDisconnectedInput(inputMessage: { input_id: string; payload: string }, targetInstanceId = instanceId) {
+        async queueDisconnectedInput(
+          inputMessage: { input_id: string; payload: string },
+          targetInstanceId = instanceId
+        ) {
           assertDeviceCanAccessInstance(input.device_id, targetInstanceId);
           inputQueue.enqueue({
             id: inputMessage.input_id,
             instanceId: targetInstanceId,
             deviceId: input.device_id,
-            payload: inputMessage.payload,
+            payload: inputMessage.payload
           });
           broadcastQueuedInputs(targetInstanceId);
         },
@@ -374,11 +424,16 @@ function createHarnessSessionService(
         },
         async close() {
           presence.leave(firstMessage.connection_id);
-          connectionsByInstance.set(instanceId, connectionMessages(instanceId).filter((connection) => connection.connectionId !== firstMessage.connection_id));
+          connectionsByInstance.set(
+            instanceId,
+            connectionMessages(instanceId).filter(
+              (connection) => connection.connectionId !== firstMessage.connection_id
+            )
+          );
           broadcastPresence(instanceId);
           return;
-        },
+        }
       };
-    },
+    }
   };
 }

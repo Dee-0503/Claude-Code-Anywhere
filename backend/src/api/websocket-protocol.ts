@@ -1,9 +1,19 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID } from 'node:crypto';
 
-import { SERVER_MESSAGE_TYPES, type ClientToServerMessage, type HelloMessagePayload, type InputAckStatus, type WebSocketConnectionParams, type ConnectionState } from "../../../shared/protocol/messages.js";
-import { BoundedOutputBuffer } from "../sessions/output-buffer.js";
-import { authenticateWebSocketConnection, type WebSocketAuthenticationOptions } from "./websocket-auth.js";
-import { replayOutput, type ReplayMessage } from "../sessions/replay-service.js";
+import {
+  SERVER_MESSAGE_TYPES,
+  type ClientToServerMessage,
+  type HelloMessagePayload,
+  type InputAckStatus,
+  type WebSocketConnectionParams,
+  type ConnectionState
+} from '../../../shared/protocol/messages.js';
+import { BoundedOutputBuffer } from '../sessions/output-buffer.js';
+import {
+  authenticateWebSocketConnection,
+  type WebSocketAuthenticationOptions
+} from './websocket-auth.js';
+import { replayOutput, type ReplayMessage } from '../sessions/replay-service.js';
 
 export interface WebSocketProtocolServiceOptions {
   readonly outputBufferBytes?: number;
@@ -32,25 +42,33 @@ export function createWebSocketProtocolService(options: WebSocketProtocolService
     return buffer;
   }
 
-  function serializeHello(input: { serverId: string; instanceId: string; connectionId: string; nextOutputOffset: number }): HelloMessagePayload {
+  function serializeHello(input: {
+    serverId: string;
+    instanceId: string;
+    connectionId: string;
+    nextOutputOffset: number;
+  }): HelloMessagePayload {
     return {
       type: SERVER_MESSAGE_TYPES.HELLO,
       server_id: input.serverId,
       instance_id: input.instanceId,
       connection_id: input.connectionId,
-      next_output_offset: input.nextOutputOffset,
+      next_output_offset: input.nextOutputOffset
     };
   }
 
   return {
-    async acceptConnection(params: Partial<WebSocketConnectionParams>, authentication: WebSocketAuthenticationOptions): Promise<AcceptedConnection> {
+    async acceptConnection(
+      params: Partial<WebSocketConnectionParams>,
+      authentication: WebSocketAuthenticationOptions
+    ): Promise<AcceptedConnection> {
       const validParams = await authenticateWebSocketConnection(params, authentication);
       const buffer = getBuffer(validParams.instance_id);
       const hello = serializeHello({
         serverId,
         instanceId: validParams.instance_id,
         connectionId: randomUUID(),
-        nextOutputOffset: buffer.snapshot.nextOffset,
+        nextOutputOffset: buffer.snapshot.nextOffset
       });
       return { ...hello, replay: replayOutput(buffer, validParams.last_output_offset) };
     },
@@ -60,15 +78,19 @@ export function createWebSocketProtocolService(options: WebSocketProtocolService
         type: SERVER_MESSAGE_TYPES.OUTPUT,
         instance_id: input.instanceId,
         offset: input.offset,
-        data: input.data,
+        data: input.data
       };
     },
-    serializeOutputGap(input: { instanceId: string; requestedOffset: number; availableFromOffset: number }) {
+    serializeOutputGap(input: {
+      instanceId: string;
+      requestedOffset: number;
+      availableFromOffset: number;
+    }) {
       return {
         type: SERVER_MESSAGE_TYPES.OUTPUT_GAP,
         instance_id: input.instanceId,
         requested_offset: input.requestedOffset,
-        available_from_offset: input.availableFromOffset,
+        available_from_offset: input.availableFromOffset
       };
     },
     serializeInputAck(input: { instanceId: string; inputId: string; status: InputAckStatus }) {
@@ -76,13 +98,13 @@ export function createWebSocketProtocolService(options: WebSocketProtocolService
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: input.instanceId,
         input_id: input.inputId,
-        status: input.status,
+        status: input.status
       };
     },
     serializeConnectionState(state: ConnectionState) {
       return {
         type: SERVER_MESSAGE_TYPES.CONNECTION_STATE,
-        state,
+        state
       };
     },
     parseClientMessage(raw: string): ClientToServerMessage {
@@ -91,6 +113,6 @@ export function createWebSocketProtocolService(options: WebSocketProtocolService
     async appendOutput(instanceId: string, data: string) {
       return getBuffer(instanceId).append(data);
     },
-    getBuffer,
+    getBuffer
   };
 }

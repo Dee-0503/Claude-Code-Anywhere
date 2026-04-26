@@ -1,18 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import type { ReactElement } from "react";
+import { useEffect, useMemo, useState } from 'react';
+import type { ReactElement } from 'react';
 
-import { ProtocolClient } from "../protocol/client.js";
-import type { ProtocolClientStatus } from "../protocol/client.js";
-import {
-  loadDeviceCredentials,
-  type DeviceCredentials,
-} from "../protocol/device-credentials.js";
-import { PairingPage } from "./PairingPage.js";
-import { TerminalView } from "../terminal/TerminalView.js";
-import { TeamWorkspace } from "../components/TeamWorkspace.js";
-import type { TeamWorkspaceTeammate } from "../components/TeamWorkspace.js";
+import { ProtocolClient } from '../protocol/client.js';
+import type { ProtocolClientStatus } from '../protocol/client.js';
+import { loadDeviceCredentials, type DeviceCredentials } from '../protocol/device-credentials.js';
+import { PairingPage } from './PairingPage.js';
+import { TerminalView } from '../terminal/TerminalView.js';
+import { TeamWorkspace } from '../components/TeamWorkspace.js';
+import type { TeamWorkspaceTeammate } from '../components/TeamWorkspace.js';
 
-type RouteName = "home" | "pairing" | "terminal";
+type RouteName = 'home' | 'pairing' | 'terminal';
 
 interface AppRoute {
   name: RouteName;
@@ -21,19 +18,21 @@ interface AppRoute {
 }
 
 const ROUTES: AppRoute[] = [
-  { name: "home", label: "概览", path: "/" },
-  { name: "pairing", label: "配对", path: "/pairing" },
-  { name: "terminal", label: "终端", path: "/terminal" },
+  { name: 'home', label: '概览', path: '/' },
+  { name: 'pairing', label: '配对', path: '/pairing' },
+  { name: 'terminal', label: '终端', path: '/terminal' }
 ];
 
-const DEFAULT_INSTANCE_ID = "default";
+const DEFAULT_INSTANCE_ID = 'default';
 
 export function resolveInstanceIdFromLocation(location: URL): string {
-  return location.searchParams.get("instance") ?? DEFAULT_INSTANCE_ID;
+  return location.searchParams.get('instance') ?? DEFAULT_INSTANCE_ID;
 }
 
 function createTerminalPath(instanceId: string): string {
-  return instanceId === DEFAULT_INSTANCE_ID ? "/terminal" : `/terminal?instance=${encodeURIComponent(instanceId)}`;
+  return instanceId === DEFAULT_INSTANCE_ID
+    ? '/terminal'
+    : `/terminal?instance=${encodeURIComponent(instanceId)}`;
 }
 
 export interface InstanceSummary {
@@ -69,10 +68,12 @@ export interface InstanceListResponse {
   readonly team_sessions: TeamSessionSummary[];
 }
 
-export async function fetchInstanceSummaries(credentials: DeviceCredentials): Promise<InstanceListResponse> {
-  const url = new URL("/api/instances", window.location.origin);
-  url.searchParams.set("device_id", credentials.device_id);
-  url.searchParams.set("access_token", credentials.access_token);
+export async function fetchInstanceSummaries(
+  credentials: DeviceCredentials
+): Promise<InstanceListResponse> {
+  const url = new URL('/api/instances', window.location.origin);
+  url.searchParams.set('device_id', credentials.device_id);
+  url.searchParams.set('access_token', credentials.access_token);
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -85,25 +86,30 @@ export async function fetchInstanceSummaries(credentials: DeviceCredentials): Pr
 export function createTerminalRouteModel(
   instances: readonly InstanceSummary[],
   teamSessions: readonly TeamSessionSummary[],
-  activeInstanceId: string,
+  activeInstanceId: string
 ): TerminalRouteModel {
-  const currentSession = teamSessions.find((session) => session.teammates.some((teammate) => teammate.instance_id === activeInstanceId));
-  const teammates = currentSession?.teammates.map((teammate) => ({
-    instanceId: teammate.instance_id,
-    teammateName: teammate.teammate_name,
-    instanceName: teammate.instance_name,
-  })) ?? instances.map((instance) => ({
-    instanceId: instance.id,
-    teammateName: instance.team_metadata?.teammate_name ?? instance.name,
-    instanceName: instance.name,
-  }));
+  const currentSession = teamSessions.find((session) =>
+    session.teammates.some((teammate) => teammate.instance_id === activeInstanceId)
+  );
+  const teammates =
+    currentSession?.teammates.map((teammate) => ({
+      instanceId: teammate.instance_id,
+      teammateName: teammate.teammate_name,
+      instanceName: teammate.instance_name
+    })) ??
+    instances.map((instance) => ({
+      instanceId: instance.id,
+      teammateName: instance.team_metadata?.teammate_name ?? instance.name,
+      instanceName: instance.name
+    }));
 
   return {
     activeInstanceId,
-    teammates: teammates.length > 0
-      ? teammates
-      : [{ instanceId: activeInstanceId, teammateName: "当前", instanceName: activeInstanceId }],
-    createTerminalPath,
+    teammates:
+      teammates.length > 0
+        ? teammates
+        : [{ instanceId: activeInstanceId, teammateName: '当前', instanceName: activeInstanceId }],
+    createTerminalPath
   };
 }
 
@@ -113,17 +119,21 @@ function resolveRoute(pathname: string): AppRoute {
 
 export default function App(): ReactElement {
   const [route, setRoute] = useState<AppRoute>(() => resolveRoute(window.location.pathname));
-  const [connectionStatus, setConnectionStatus] = useState<ProtocolClientStatus>("idle");
-  const [credentials, setCredentials] = useState<DeviceCredentials | null>(() => loadDeviceCredentials());
-  const [activeInstanceId, setActiveInstanceId] = useState(() => resolveInstanceIdFromLocation(new URL(window.location.href)));
+  const [connectionStatus, setConnectionStatus] = useState<ProtocolClientStatus>('idle');
+  const [credentials, setCredentials] = useState<DeviceCredentials | null>(() =>
+    loadDeviceCredentials()
+  );
+  const [activeInstanceId, setActiveInstanceId] = useState(() =>
+    resolveInstanceIdFromLocation(new URL(window.location.href))
+  );
   const [instances, setInstances] = useState<InstanceSummary[]>([]);
   const [teamSessions, setTeamSessions] = useState<TeamSessionSummary[]>([]);
   const protocolClient = useMemo(
-    () => new ProtocolClient({ url: `${window.location.origin.replace(/^http/, "ws")}/ws` }),
-    [],
+    () => new ProtocolClient({ url: `${window.location.origin.replace(/^http/, 'ws')}/ws` }),
+    []
   );
 
-  useEffect(() => protocolClient.on("status", setConnectionStatus), [protocolClient]);
+  useEffect(() => protocolClient.on('status', setConnectionStatus), [protocolClient]);
 
   useEffect(() => {
     if (credentials === null) {
@@ -133,17 +143,19 @@ export default function App(): ReactElement {
     }
 
     let cancelled = false;
-    void fetchInstanceSummaries(credentials).then((instanceList) => {
-      if (!cancelled) {
-        setInstances(instanceList.instances);
-        setTeamSessions(instanceList.team_sessions);
-      }
-    }).catch(() => {
-      if (!cancelled) {
-        setInstances([]);
-        setTeamSessions([]);
-      }
-    });
+    void fetchInstanceSummaries(credentials)
+      .then((instanceList) => {
+        if (!cancelled) {
+          setInstances(instanceList.instances);
+          setTeamSessions(instanceList.team_sessions);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setInstances([]);
+          setTeamSessions([]);
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -156,25 +168,25 @@ export default function App(): ReactElement {
       setActiveInstanceId(resolveInstanceIdFromLocation(new URL(window.location.href)));
     }
 
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   function navigate(nextRoute: AppRoute): void {
-    window.history.pushState(null, "", nextRoute.path);
+    window.history.pushState(null, '', nextRoute.path);
     setRoute(nextRoute);
   }
 
   function handleSelectInstance(instanceId: string): void {
     setActiveInstanceId(instanceId);
-    const terminalRoute = ROUTES.find((item) => item.name === "terminal") ?? ROUTES[0]!;
-    window.history.pushState(null, "", createTerminalPath(instanceId));
+    const terminalRoute = ROUTES.find((item) => item.name === 'terminal') ?? ROUTES[0]!;
+    window.history.pushState(null, '', createTerminalPath(instanceId));
     setRoute(terminalRoute);
   }
 
   function handlePaired(nextCredentials: DeviceCredentials): void {
     setCredentials(nextCredentials);
-    navigate(ROUTES.find((item) => item.name === "terminal") ?? ROUTES[0]!);
+    navigate(ROUTES.find((item) => item.name === 'terminal') ?? ROUTES[0]!);
   }
 
   return (
@@ -188,7 +200,7 @@ export default function App(): ReactElement {
       <nav aria-label="主导航">
         {ROUTES.map((item) => (
           <button
-            aria-current={item.name === route.name ? "page" : undefined}
+            aria-current={item.name === route.name ? 'page' : undefined}
             key={item.name}
             onClick={() => navigate(item)}
             type="button"
@@ -200,12 +212,19 @@ export default function App(): ReactElement {
 
       <section aria-labelledby="route-title">
         <h2 id="route-title">{route.label}</h2>
-        {renderRoute(route.name, protocolClient, credentials, handlePaired, createTerminalRouteModel(instances, teamSessions, activeInstanceId), handleSelectInstance)}
+        {renderRoute(
+          route.name,
+          protocolClient,
+          credentials,
+          handlePaired,
+          createTerminalRouteModel(instances, teamSessions, activeInstanceId),
+          handleSelectInstance
+        )}
       </section>
 
       <footer>
         <small>
-          Device: {credentials?.device_id ?? "未配对"} · Instance: {activeInstanceId}
+          Device: {credentials?.device_id ?? '未配对'} · Instance: {activeInstanceId}
         </small>
       </footer>
     </main>
@@ -218,12 +237,12 @@ function renderRoute(
   credentials: DeviceCredentials | null,
   onPaired: (credentials: DeviceCredentials) => void,
   terminalRoute: TerminalRouteModel,
-  onSelectInstance: (instanceId: string) => void,
+  onSelectInstance: (instanceId: string) => void
 ): ReactElement {
   switch (routeName) {
-    case "pairing":
+    case 'pairing':
       return <PairingPage onPaired={onPaired} />;
-    case "terminal":
+    case 'terminal':
       return (
         <>
           <TeamWorkspace
@@ -231,10 +250,14 @@ function renderRoute(
             teammates={terminalRoute.teammates}
             onSelect={onSelectInstance}
           />
-          <TerminalView client={protocolClient} credentials={credentials} instanceId={terminalRoute.activeInstanceId} />
+          <TerminalView
+            client={protocolClient}
+            credentials={credentials}
+            instanceId={terminalRoute.activeInstanceId}
+          />
         </>
       );
-    case "home":
+    case 'home':
       return <p>应用壳层、配对入口和远程终端路由已就绪。</p>;
   }
 }

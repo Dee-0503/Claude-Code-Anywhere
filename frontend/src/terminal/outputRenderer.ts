@@ -1,4 +1,7 @@
-import { SERVER_MESSAGE_TYPES, type OutputMessagePayload } from "../../../shared/protocol/messages.js";
+import {
+  SERVER_MESSAGE_TYPES,
+  type OutputMessagePayload
+} from '../../../shared/protocol/messages.js';
 
 export interface TerminalOutputWriter {
   write(data: string): void;
@@ -18,7 +21,7 @@ export interface TerminalOutputState {
 export function appendTerminalOutput(
   state: TerminalOutputState,
   message: OutputMessagePayload,
-  writer: TerminalOutputWriter | null,
+  writer: TerminalOutputWriter | null
 ): TerminalOutputState {
   if (message.type !== SERVER_MESSAGE_TYPES.OUTPUT) {
     return state;
@@ -54,21 +57,25 @@ export function appendTerminalOutput(
     ...state,
     chunks,
     visibleLength,
-    scrollOffset,
+    scrollOffset
   };
 }
 
 export function getTerminalOutputText(state: TerminalOutputState): string {
-  return state.chunks.join("");
+  return state.chunks.join('');
 }
 
-export function scrollTerminalOutput(state: TerminalOutputState, scroller: TerminalOutputScroller | null, outputOffset: number): void {
+export function scrollTerminalOutput(
+  state: TerminalOutputState,
+  scroller: TerminalOutputScroller | null,
+  outputOffset: number
+): void {
   if (outputOffset < state.scrollOffset) {
     scroller?.scrollToLine(0);
     return;
   }
 
   const visibleOffset = outputOffset - state.scrollOffset;
-  const line = getTerminalOutputText(state).slice(0, visibleOffset).split("\n").length - 1;
+  const line = getTerminalOutputText(state).slice(0, visibleOffset).split('\n').length - 1;
   scroller?.scrollToLine(line);
 }

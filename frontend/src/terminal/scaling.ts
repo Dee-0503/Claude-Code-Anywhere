@@ -24,8 +24,11 @@ const TERMINAL_COLUMNS = 120;
 const MINIMUM_SCALE = 0.5;
 const DEFAULT_CHARACTER_WIDTH = 8;
 
-export function measureTerminalCharacterWidth(element: HTMLElement, fallback = DEFAULT_CHARACTER_WIDTH): number {
-  const measuredElement = element.querySelector(".xterm-char-measure-element");
+export function measureTerminalCharacterWidth(
+  element: HTMLElement,
+  fallback = DEFAULT_CHARACTER_WIDTH
+): number {
+  const measuredElement = element.querySelector('.xterm-char-measure-element');
   if (!(measuredElement instanceof HTMLElement)) {
     return fallback;
   }
@@ -42,32 +45,35 @@ export function calculateTerminalScale(input: TerminalScaleInput): TerminalScale
   return {
     columns: TERMINAL_COLUMNS,
     scale,
-    contentWidth,
+    contentWidth
   };
 }
 
-export function createTerminalScaleObserver(options: TerminalScaleObserverOptions): TerminalScaleObserver {
-  const resizeObserver = typeof ResizeObserver === "undefined"
-    ? null
-    : new ResizeObserver(() => recalculate());
+export function createTerminalScaleObserver(
+  options: TerminalScaleObserverOptions
+): TerminalScaleObserver {
+  const resizeObserver =
+    typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => recalculate());
 
   function recalculate(): void {
-    options.onScaleChange(calculateTerminalScale({
-      containerWidth: options.element.clientWidth,
-      characterWidth: options.getCharacterWidth(),
-    }));
+    options.onScaleChange(
+      calculateTerminalScale({
+        containerWidth: options.element.clientWidth,
+        characterWidth: options.getCharacterWidth()
+      })
+    );
   }
 
   resizeObserver?.observe(options.element);
-  window.addEventListener("resize", recalculate);
-  window.addEventListener("orientationchange", recalculate);
+  window.addEventListener('resize', recalculate);
+  window.addEventListener('orientationchange', recalculate);
 
   return {
     recalculate,
     disconnect() {
       resizeObserver?.disconnect();
-      window.removeEventListener("resize", recalculate);
-      window.removeEventListener("orientationchange", recalculate);
-    },
+      window.removeEventListener('resize', recalculate);
+      window.removeEventListener('orientationchange', recalculate);
+    }
   };
 }
