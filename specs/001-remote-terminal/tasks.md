@@ -179,14 +179,14 @@
 
 ### Tests for User Story 6
 
-- [ ] T067 [P] [US6] Add frontend unit tests for mobile shortcut and paste confirmation behavior in `frontend/tests/unit/mobile-input.test.tsx`
+- [X] T067 [P] [US6] Add frontend unit tests for mobile shortcut and paste confirmation behavior in `frontend/tests/unit/mobile-input.test.tsx`
 
 ### Implementation for User Story 6
 
-- [ ] T068 [US6] Implement mobile command shortcut bar in `frontend/src/components/MobileShortcutBar.tsx`
-- [ ] T069 [US6] Implement command template picker in `frontend/src/components/CommandTemplatePicker.tsx`
-- [ ] T070 [US6] Implement paste confirmation flow in `frontend/src/components/PasteConfirm.tsx`
-- [ ] T071 [US6] Implement optional speech-to-text input adapter boundary in `frontend/src/services/speechInput.ts`
+- [X] T068 [US6] Implement mobile command shortcut bar in `frontend/src/components/MobileShortcutBar.tsx`
+- [X] T069 [US6] Implement command template picker in `frontend/src/components/CommandTemplatePicker.tsx`
+- [X] T070 [US6] Implement paste confirmation flow in `frontend/src/components/PasteConfirm.tsx`
+- [X] T071 [US6] Implement optional speech-to-text input adapter boundary in `frontend/src/services/speechInput.ts`
 
 **Checkpoint**: Mobile input helpers operate without changing backend terminal semantics.
 
