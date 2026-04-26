@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { createServer, type Server as HttpServer } from "node:http";
+import { createServer, type IncomingMessage, type Server as HttpServer } from "node:http";
+import type { Duplex } from "node:stream";
+
+import { WebSocketServer } from "ws";
+
+import { authenticateWebSocketConnection, rejectInvalidWebSocketRequestPolicy, type WebSocketAuthenticationOptions } from "./websocket-auth.js";
 
 import type {
   ClientConnection,
@@ -104,21 +109,18 @@ export interface WebSocketServerBootstrap {
   readonly httpServer: HttpServer;
   readonly registry: ConnectionRegistry;
   readonly config: AppConfig;
+  readonly webSocketServer: WebSocketServer;
 }
 
-export function parseConnectionParams(searchParams: URLSearchParams): WebSocketConnectionParams {
+export function parseConnectionParams(searchParams: URLSearchParams): Partial<WebSocketConnectionParams> {
   const deviceId = searchParams.get("device_id");
-  const accessToken = searchParams.get("access_token");
+  const accessToken = searchParams.get("access_token") ?? undefined;
   const instanceId = searchParams.get("instance_id");
   const lastOutputOffsetRaw = searchParams.get("last_output_offset");
   const lastOutputOffset = lastOutputOffsetRaw === null ? NaN : Number(lastOutputOffsetRaw);
 
   if (!isNonEmptyString(deviceId)) {
     throw invalidRequest("device_id must be a non-empty string", { field: "device_id" });
-  }
-
-  if (!isNonEmptyString(accessToken)) {
-    throw invalidRequest("access_token must be a non-empty string", { field: "access_token" });
   }
 
   if (!isNonEmptyString(instanceId)) {
@@ -133,7 +135,7 @@ export function parseConnectionParams(searchParams: URLSearchParams): WebSocketC
 
   return {
     device_id: deviceId,
-    access_token: accessToken,
+    ...(accessToken === undefined ? {} : { access_token: accessToken }),
     instance_id: instanceId,
     last_output_offset: lastOutputOffset,
   };
@@ -153,13 +155,72 @@ export function createHelloMessage(
   };
 }
 
+function writeUpgradeRejection(socket: Duplex, statusCode: number, message: string): void {
+  socket.write(`HTTP/1.1 ${statusCode} ${message}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
+  socket.destroy();
+}
+
+function getErrorStatusCode(error: unknown): number {
+  if (error instanceof Error && "statusCode" in error && typeof (error as { statusCode: unknown }).statusCode === "number") {
+    return (error as { statusCode: number }).statusCode;
+  }
+  return 500;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "WebSocket upgrade failed";
+}
+
+export function installWebSocketUpgradeHandler(input: {
+  readonly httpServer: HttpServer;
+  readonly webSocketServer: WebSocketServer;
+  readonly config: Pick<AppConfig, "websocketPath" | "websocketAllowedOrigins">;
+  readonly authentication: WebSocketAuthenticationOptions;
+  readonly registry: ConnectionRegistry;
+}): void {
+  input.httpServer.on("upgrade", (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+    void (async () => {
+      try {
+        const url = new URL(request.url ?? "", "http://localhost");
+        rejectInvalidWebSocketRequestPolicy({
+          path: url.pathname,
+          origin: request.headers.origin,
+          allowedPath: input.config.websocketPath,
+          allowedOrigins: input.config.websocketAllowedOrigins,
+        });
+        const params = await authenticateWebSocketConnection(parseConnectionParams(url.searchParams), input.authentication);
+
+        input.webSocketServer.handleUpgrade(request, socket, head, (webSocket) => {
+          input.registry.register(webSocket, params);
+          input.webSocketServer.emit("connection", webSocket, request);
+        });
+      } catch (error) {
+        writeUpgradeRejection(socket, getErrorStatusCode(error), getErrorMessage(error));
+      }
+    })();
+  });
+}
+
 export function createWebSocketServerBootstrap(
   appConfig: AppConfig = config,
   registry = new ConnectionRegistry(),
+  authentication?: WebSocketAuthenticationOptions,
 ): WebSocketServerBootstrap {
+  const httpServer = createServer();
+  const webSocketServer = new WebSocketServer({ noServer: true });
+  if (authentication !== undefined) {
+    installWebSocketUpgradeHandler({
+      httpServer,
+      webSocketServer,
+      config: appConfig,
+      authentication,
+      registry,
+    });
+  }
   return {
-    httpServer: createServer(),
+    httpServer,
     registry,
     config: appConfig,
+    webSocketServer,
   };
 }

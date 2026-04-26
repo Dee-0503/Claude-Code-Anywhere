@@ -11,8 +11,9 @@ export interface WebSocketRequestPolicyInput {
 }
 
 export interface WebSocketAuthenticationOptions {
-  readonly verifyDeviceToken?: (input: { device_id: string; access_token: string }) => Promise<Device & { device_id?: string }>;
-  readonly findAttachableInstanceForDevice?: (instanceId: string, deviceId: string) => ClaudeInstance | undefined;
+  readonly verifyDeviceToken: (input: { device_id: string; access_token: string }) => Promise<Device & { device_id?: string }>;
+  readonly findInstanceById: (instanceId: string) => ClaudeInstance | undefined;
+  readonly findAttachableInstanceForDevice: (instanceId: string, deviceId: string) => ClaudeInstance | undefined;
 }
 
 function webSocketError(code: string, message: string, statusCode: number): Error & { code: string; statusCode: number } {
@@ -25,10 +26,16 @@ export function rejectInvalidWebSocketRequestPolicy(input: WebSocketRequestPolic
     throw webSocketError("INVALID_WEBSOCKET_PATH", "Invalid WebSocket path", 400);
   }
 
-  if (input.allowedOrigins !== undefined && input.allowedOrigins.length > 0) {
-    if (!isNonEmptyString(input.origin) || !input.allowedOrigins.includes(input.origin)) {
+  const allowedOrigins = input.allowedOrigins ?? [];
+  if (allowedOrigins.length === 0) {
+    if (isNonEmptyString(input.origin)) {
       throw webSocketError("WEBSOCKET_ORIGIN_DENIED", "WebSocket origin denied", 403);
     }
+    return;
+  }
+
+  if (!isNonEmptyString(input.origin) || !allowedOrigins.includes(input.origin)) {
+    throw webSocketError("WEBSOCKET_ORIGIN_DENIED", "WebSocket origin denied", 403);
   }
 }
 
@@ -58,39 +65,38 @@ export function validateWebSocketHandshake(params: Partial<WebSocketConnectionPa
 
 export async function authenticateWebSocketConnection(
   params: Partial<WebSocketConnectionParams>,
-  optionsOrVerifyDeviceToken?: WebSocketAuthenticationOptions | ((input: { device_id: string; access_token: string }) => Promise<Device & { device_id?: string }>),
+  options: WebSocketAuthenticationOptions,
 ): Promise<WebSocketConnectionParams> {
-  const options = typeof optionsOrVerifyDeviceToken === "function"
-    ? { verifyDeviceToken: optionsOrVerifyDeviceToken }
-    : optionsOrVerifyDeviceToken ?? {};
   const validParams = validateWebSocketHandshake(params);
-  const device = options.verifyDeviceToken === undefined
-    ? { id: validParams.device_id }
-    : await options.verifyDeviceToken({
-      device_id: validParams.device_id,
-      access_token: validParams.access_token,
-    }).catch((error: unknown) => {
-      if (
-        error instanceof Error &&
-        "code" in error &&
-        (error as { code: unknown }).code === "INVALID_DEVICE_TOKEN"
-      ) {
-        throw webSocketError("INVALID_DEVICE_TOKEN", "Invalid device token", 401);
-      }
-      throw error;
-    });
+  const device = await options.verifyDeviceToken({
+    device_id: validParams.device_id,
+    access_token: validParams.access_token,
+  }).catch((error: unknown) => {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as { code: unknown }).code === "INVALID_DEVICE_TOKEN"
+    ) {
+      throw webSocketError("INVALID_DEVICE_TOKEN", "Invalid device token", 401);
+    }
+    throw error;
+  });
   const deviceId = "device_id" in device && device.device_id !== undefined
     ? device.device_id
     : device.id;
 
-  if (options.findAttachableInstanceForDevice !== undefined) {
-    const instance = options.findAttachableInstanceForDevice(validParams.instance_id, deviceId);
-    if (instance === undefined) {
-      throw webSocketError("WEBSOCKET_INSTANCE_NOT_FOUND", "WebSocket instance not found", 404);
-    }
-    if (instance.status !== CLAUDE_INSTANCE_STATUSES.RUNNING && instance.status !== CLAUDE_INSTANCE_STATUSES.IDLE) {
-      throw webSocketError("WEBSOCKET_INSTANCE_NOT_ATTACHABLE", "WebSocket instance is not attachable", 404);
-    }
+  const instance = options.findInstanceById(validParams.instance_id);
+  if (instance === undefined) {
+    throw webSocketError("WEBSOCKET_INSTANCE_NOT_FOUND", "WebSocket instance not found", 404);
+  }
+
+  const attachableInstance = options.findAttachableInstanceForDevice(validParams.instance_id, deviceId);
+  if (attachableInstance === undefined) {
+    throw webSocketError("WEBSOCKET_INSTANCE_FORBIDDEN", "WebSocket instance access denied", 403);
+  }
+
+  if (attachableInstance.status !== CLAUDE_INSTANCE_STATUSES.RUNNING && attachableInstance.status !== CLAUDE_INSTANCE_STATUSES.IDLE) {
+    throw webSocketError("WEBSOCKET_INSTANCE_NOT_ATTACHABLE", "WebSocket instance is not attachable", 404);
   }
 
   return validParams;

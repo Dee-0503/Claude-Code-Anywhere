@@ -52,6 +52,8 @@ describe("auth security", () => {
       last_output_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
+      findInstanceById: instances.getInstance,
+      findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
     })).rejects.toMatchObject({ code: "DEVICE_REVOKED" });
   });
 
@@ -74,6 +76,7 @@ describe("auth security", () => {
       last_output_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
+      findInstanceById: instances.getInstance,
       findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
     })).rejects.toMatchObject({ code: "MISSING_WEBSOCKET_TOKEN", statusCode: 401 });
   });
@@ -97,6 +100,7 @@ describe("auth security", () => {
       last_output_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
+      findInstanceById: instances.getInstance,
       findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
     })).rejects.toMatchObject({ code: "INVALID_DEVICE_TOKEN", statusCode: 401 });
   });
@@ -129,8 +133,9 @@ describe("auth security", () => {
       last_output_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
+      findInstanceById: instances.getInstance,
       findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
-    })).rejects.toMatchObject({ code: "WEBSOCKET_INSTANCE_NOT_FOUND", statusCode: 404 });
+    })).rejects.toMatchObject({ code: "WEBSOCKET_INSTANCE_FORBIDDEN", statusCode: 403 });
   });
 
   it("rejects websocket attaches to missing or non-attachable instances", async () => {
@@ -157,6 +162,7 @@ describe("auth security", () => {
       last_output_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
+      findInstanceById: instances.getInstance,
       findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
     })).rejects.toMatchObject({ code: "WEBSOCKET_INSTANCE_NOT_FOUND", statusCode: 404 });
 
@@ -167,6 +173,7 @@ describe("auth security", () => {
       last_output_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
+      findInstanceById: instances.getInstance,
       findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
     })).rejects.toMatchObject({ code: "WEBSOCKET_INSTANCE_NOT_ATTACHABLE", statusCode: 404 });
   });

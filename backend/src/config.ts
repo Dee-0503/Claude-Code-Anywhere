@@ -13,6 +13,8 @@ export interface AppConfig {
   readonly outputBufferBytes: number;
   readonly heartbeatIntervalMs: number;
   readonly heartbeatTimeoutMs: number;
+  readonly websocketPath: string;
+  readonly websocketAllowedOrigins: readonly string[];
 }
 
 export interface ConfigEnvironment {
@@ -29,6 +31,8 @@ const DEFAULT_CONFIG: AppConfig = {
   outputBufferBytes: 1024 * 1024,
   heartbeatIntervalMs: 15_000,
   heartbeatTimeoutMs: 45_000,
+  websocketPath: "/ws",
+  websocketAllowedOrigins: [],
 };
 
 function readInteger(
@@ -103,6 +107,25 @@ function readRepositoryMode(value: string | undefined): RepositoryMode {
   throw new Error("CCA_REPOSITORY_MODE must be sqlite or memory");
 }
 
+function readWebSocketPath(value: string | undefined): string {
+  const path = value?.trim() || DEFAULT_CONFIG.websocketPath;
+  if (!path.startsWith("/")) {
+    throw new Error("CCA_WEBSOCKET_PATH must start with /");
+  }
+  return path;
+}
+
+function readWebSocketAllowedOrigins(value: string | undefined): readonly string[] {
+  if (value === undefined || value.trim() === "") {
+    return DEFAULT_CONFIG.websocketAllowedOrigins;
+  }
+
+  return value
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+}
+
 export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
   const host = env.CCA_HOST?.trim() || DEFAULT_CONFIG.host;
   const port = readInteger(env.CCA_PORT, DEFAULT_CONFIG.port, "CCA_PORT", {
@@ -142,6 +165,8 @@ export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
     "CCA_HEARTBEAT_TIMEOUT_MS",
     { min: heartbeatIntervalMs },
   );
+  const websocketPath = readWebSocketPath(env.CCA_WEBSOCKET_PATH);
+  const websocketAllowedOrigins = readWebSocketAllowedOrigins(env.CCA_WEBSOCKET_ALLOWED_ORIGINS);
 
   return {
     host,
@@ -153,6 +178,8 @@ export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
     outputBufferBytes,
     heartbeatIntervalMs,
     heartbeatTimeoutMs,
+    websocketPath,
+    websocketAllowedOrigins,
   };
 }
 

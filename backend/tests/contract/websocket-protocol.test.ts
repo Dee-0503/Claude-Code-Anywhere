@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { CLAUDE_INSTANCE_STATUSES, type ClaudeInstance } from "../../../shared/protocol/domain.js";
 import {
   CLIENT_MESSAGE_TYPES,
   SERVER_MESSAGE_TYPES,
@@ -18,9 +19,32 @@ const connectionParams: WebSocketConnectionParams = {
   last_output_offset: 0,
 };
 
+const attachableInstance: ClaudeInstance = {
+  id: "instance-id",
+  name: "Claude Code",
+  status: CLAUDE_INSTANCE_STATUSES.RUNNING,
+  ptyPid: null,
+  cwd: "/workspace",
+  createdByDeviceId: "device-id",
+  teamMetadata: null,
+  createdAt: "2026-04-25T12:00:00.000Z",
+  lastActiveAt: "2026-04-25T12:00:00.000Z",
+  exitedAt: null,
+};
+
+const authentication = {
+  verifyDeviceToken: async () => ({ id: "device-id" }),
+  findInstanceById: (instanceId: string) => instanceId === attachableInstance.id ? attachableInstance : undefined,
+  findAttachableInstanceForDevice: (instanceId: string, deviceId: string) => (
+    instanceId === attachableInstance.id && deviceId === attachableInstance.createdByDeviceId
+      ? attachableInstance
+      : undefined
+  ),
+};
+
 describe("websocket protocol contract", () => {
   it("requires authenticated connection fields before attaching to an instance", async () => {
-    const protocol = createWebSocketProtocolService();
+    const protocol = createWebSocketProtocolService({ authentication });
 
     await expect(
       protocol.acceptConnection({
@@ -40,7 +64,7 @@ describe("websocket protocol contract", () => {
   });
 
   it("serializes hello, output, ack_output, and output_gap with the contract field names", () => {
-    const protocol = createWebSocketProtocolService();
+    const protocol = createWebSocketProtocolService({ authentication });
 
     expect(protocol.serializeHello({
       serverId: "local-server-id",
@@ -89,7 +113,7 @@ describe("websocket protocol contract", () => {
   });
 
   it("replays buffered output from last_output_offset or emits output_gap when history was evicted", async () => {
-    const protocol = createWebSocketProtocolService({ outputBufferBytes: 16 });
+    const protocol = createWebSocketProtocolService({ outputBufferBytes: 16, authentication });
 
     await protocol.appendOutput("instance-id", "01234567");
     await protocol.appendOutput("instance-id", "89abcdef");

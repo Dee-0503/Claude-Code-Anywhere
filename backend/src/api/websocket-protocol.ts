@@ -2,12 +2,13 @@ import { randomUUID } from "node:crypto";
 
 import { SERVER_MESSAGE_TYPES, type ClientToServerMessage, type HelloMessagePayload, type InputAckStatus, type WebSocketConnectionParams, type ConnectionState } from "../../../shared/protocol/messages.js";
 import { BoundedOutputBuffer } from "../sessions/output-buffer.js";
-import { validateWebSocketHandshake } from "./websocket-auth.js";
+import { authenticateWebSocketConnection, type WebSocketAuthenticationOptions } from "./websocket-auth.js";
 import { replayOutput, type ReplayMessage } from "../sessions/replay-service.js";
 
 export interface WebSocketProtocolServiceOptions {
   readonly outputBufferBytes?: number;
   readonly serverId?: string;
+  readonly authentication: WebSocketAuthenticationOptions;
 }
 
 export interface AcceptedConnection extends HelloMessagePayload {
@@ -40,7 +41,7 @@ export function createWebSocketProtocolService(options: WebSocketProtocolService
 
   return {
     async acceptConnection(params: Partial<WebSocketConnectionParams>): Promise<AcceptedConnection> {
-      const validParams = validateWebSocketHandshake(params);
+      const validParams = await authenticateWebSocketConnection(params, options.authentication);
       const buffer = getBuffer(validParams.instance_id);
       const hello = serializeHello({
         serverId,
