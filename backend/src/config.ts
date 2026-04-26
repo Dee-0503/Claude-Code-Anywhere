@@ -1,14 +1,12 @@
 import { resolve } from "node:path";
 
-export type TlsMode = "off" | "self-signed" | "provided";
+export type TlsMode = "off";
 
 export interface AppConfig {
   readonly host: string;
   readonly port: number;
   readonly databasePath: string;
   readonly tlsMode: TlsMode;
-  readonly tlsCertPath: string | null;
-  readonly tlsKeyPath: string | null;
   readonly trustReverseProxy: boolean;
   readonly outputBufferBytes: number;
   readonly heartbeatIntervalMs: number;
@@ -24,8 +22,6 @@ const DEFAULT_CONFIG: AppConfig = {
   port: 5178,
   databasePath: resolve(process.cwd(), "data", "claude-code-anywhere.sqlite"),
   tlsMode: "off",
-  tlsCertPath: null,
-  tlsKeyPath: null,
   trustReverseProxy: false,
   outputBufferBytes: 1024 * 1024,
   heartbeatIntervalMs: 15_000,
@@ -59,15 +55,15 @@ function readInteger(
 }
 
 function readTlsMode(value: string | undefined): TlsMode {
-  if (value === undefined || value.trim() === "") {
+  if (value === undefined || value.trim() === "" || value === "off") {
     return DEFAULT_CONFIG.tlsMode;
   }
 
-  if (value === "off" || value === "self-signed" || value === "provided") {
-    return value;
+  if (value === "self-signed" || value === "provided") {
+    throw new Error(`CCA_TLS_MODE=${value} is not supported; terminate TLS at a trusted reverse proxy`);
   }
 
-  throw new Error("CCA_TLS_MODE must be one of: off, self-signed, provided");
+  throw new Error("CCA_TLS_MODE must be off");
 }
 
 function readBoolean(value: string | undefined, fallback: boolean, name: string): boolean {
@@ -86,17 +82,10 @@ function readBoolean(value: string | undefined, fallback: boolean, name: string)
   throw new Error(`${name} must be true or false`);
 }
 
-function readTlsPath(value: string | undefined, name: string, tlsMode: TlsMode): string | null {
-  const trimmed = value?.trim();
-  if (tlsMode !== "provided") {
-    return null;
+function readTlsTerminationPath(value: string | undefined, name: string): void {
+  if (value !== undefined && value.trim() !== "") {
+    throw new Error(`${name} is not supported; terminate TLS at a trusted reverse proxy`);
   }
-
-  if (trimmed === undefined || trimmed === "") {
-    throw new Error(`${name} is required when CCA_TLS_MODE=provided`);
-  }
-
-  return resolve(trimmed);
 }
 
 export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
@@ -109,8 +98,8 @@ export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
     env.CCA_DATABASE_PATH?.trim() || DEFAULT_CONFIG.databasePath,
   );
   const tlsMode = readTlsMode(env.CCA_TLS_MODE);
-  const tlsCertPath = readTlsPath(env.CCA_TLS_CERT_PATH, "CCA_TLS_CERT_PATH", tlsMode);
-  const tlsKeyPath = readTlsPath(env.CCA_TLS_KEY_PATH, "CCA_TLS_KEY_PATH", tlsMode);
+  readTlsTerminationPath(env.CCA_TLS_CERT_PATH, "CCA_TLS_CERT_PATH");
+  readTlsTerminationPath(env.CCA_TLS_KEY_PATH, "CCA_TLS_KEY_PATH");
   const trustReverseProxy = readBoolean(
     env.CCA_TRUST_REVERSE_PROXY,
     DEFAULT_CONFIG.trustReverseProxy,
@@ -143,8 +132,6 @@ export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
     port,
     databasePath,
     tlsMode,
-    tlsCertPath,
-    tlsKeyPath,
     trustReverseProxy,
     outputBufferBytes,
     heartbeatIntervalMs,

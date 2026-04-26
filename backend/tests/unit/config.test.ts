@@ -3,11 +3,16 @@ import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
 
 describe("loadConfig TLS production guidance", () => {
-  it("requires certificate and key paths when provided TLS mode is selected", () => {
+  it("rejects direct TLS certificate configuration because the server only supports reverse proxy TLS termination", () => {
     expect(() => loadConfig({
       CCA_TLS_MODE: "provided",
       CCA_TLS_CERT_PATH: "/tmp/server.crt",
-    })).toThrow("CCA_TLS_KEY_PATH is required when CCA_TLS_MODE=provided");
+      CCA_TLS_KEY_PATH: "/tmp/server.key",
+    })).toThrow("CCA_TLS_MODE=provided is not supported; terminate TLS at a trusted reverse proxy");
+
+    expect(() => loadConfig({
+      CCA_TLS_MODE: "self-signed",
+    })).toThrow("CCA_TLS_MODE=self-signed is not supported; terminate TLS at a trusted reverse proxy");
   });
 
   it("rejects plaintext TLS mode in production unless a trusted reverse proxy terminates TLS", () => {
@@ -23,15 +28,9 @@ describe("loadConfig TLS production guidance", () => {
     }).trustReverseProxy).toBe(true);
   });
 
-  it("normalizes provided TLS certificate paths", () => {
-    const config = loadConfig({
-      CCA_TLS_MODE: "provided",
+  it("rejects certificate paths when direct TLS is disabled", () => {
+    expect(() => loadConfig({
       CCA_TLS_CERT_PATH: "certs/local.crt",
-      CCA_TLS_KEY_PATH: "certs/local.key",
-    });
-
-    expect(config.tlsCertPath).toContain("certs/local.crt");
-    expect(config.tlsKeyPath).toContain("certs/local.key");
-    expect(config.trustReverseProxy).toBe(false);
+    })).toThrow("CCA_TLS_CERT_PATH is not supported; terminate TLS at a trusted reverse proxy");
   });
 });
