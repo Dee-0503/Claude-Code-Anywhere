@@ -47,6 +47,7 @@ describe("auth security", () => {
       access_token: admin.access_token,
       instance_id: "main",
       last_output_offset: 0,
+      last_input_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
       findInstanceById: instances.getInstance,
@@ -71,6 +72,7 @@ describe("auth security", () => {
       access_token: "",
       instance_id: instance.id,
       last_output_offset: 0,
+      last_input_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
       findInstanceById: instances.getInstance,
@@ -95,6 +97,7 @@ describe("auth security", () => {
       access_token: "tampered-token",
       instance_id: instance.id,
       last_output_offset: 0,
+      last_input_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
       findInstanceById: instances.getInstance,
@@ -128,6 +131,7 @@ describe("auth security", () => {
       access_token: member.access_token,
       instance_id: instance.id,
       last_output_offset: 0,
+      last_input_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
       findInstanceById: instances.getInstance,
@@ -157,6 +161,7 @@ describe("auth security", () => {
       access_token: admin.access_token,
       instance_id: "missing-instance",
       last_output_offset: 0,
+      last_input_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
       findInstanceById: instances.getInstance,
@@ -168,6 +173,7 @@ describe("auth security", () => {
       access_token: admin.access_token,
       instance_id: instance.id,
       last_output_offset: 0,
+      last_input_offset: 0,
     }, {
       verifyDeviceToken: service.verifyDeviceToken,
       findInstanceById: instances.getInstance,

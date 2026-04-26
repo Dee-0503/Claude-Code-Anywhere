@@ -112,8 +112,8 @@ describe("websocket HTTP upgrade authentication", () => {
     server = bootstrapServer.httpServer;
     const port = await listen(server);
 
-    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&instance_id=${instance.id}&last_output_offset=0`)).resolves.toBe(401);
-    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=tampered-token&instance_id=${instance.id}&last_output_offset=0`)).resolves.toBe(401);
+    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&instance_id=${instance.id}&last_output_offset=0&last_input_offset=0`)).resolves.toBe(401);
+    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=tampered-token&instance_id=${instance.id}&last_output_offset=0&last_input_offset=0`)).resolves.toBe(401);
     expect(bootstrapServer.registry.list()).toHaveLength(0);
   });
 
@@ -122,15 +122,15 @@ describe("websocket HTTP upgrade authentication", () => {
     server = bootstrapServer.httpServer;
     const port = await listen(server);
 
-    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${member.device_id}&access_token=${member.access_token}&instance_id=${instance.id}&last_output_offset=0`)).resolves.toBe(403);
-    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=${admin.access_token}&instance_id=missing-instance&last_output_offset=0`)).resolves.toBe(404);
+    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${member.device_id}&access_token=${member.access_token}&instance_id=${instance.id}&last_output_offset=0&last_input_offset=0`)).resolves.toBe(403);
+    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=${admin.access_token}&instance_id=missing-instance&last_output_offset=0&last_input_offset=0`)).resolves.toBe(404);
 
     instances.repository.update({
       ...instance,
       status: CLAUDE_INSTANCE_STATUSES.EXITED,
       exitedAt: NOW.toISOString(),
     });
-    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=${admin.access_token}&instance_id=${instance.id}&last_output_offset=0`)).resolves.toBe(404);
+    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=${admin.access_token}&instance_id=${instance.id}&last_output_offset=0&last_input_offset=0`)).resolves.toBe(404);
     expect(bootstrapServer.registry.list()).toHaveLength(0);
   }, 10_000);
 
@@ -138,10 +138,10 @@ describe("websocket HTTP upgrade authentication", () => {
     const { admin, instance, bootstrapServer } = await createFixture();
     server = bootstrapServer.httpServer;
     const port = await listen(server);
-    const validUrl = `ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=${admin.access_token}&instance_id=${instance.id}&last_output_offset=0`;
+    const validUrl = `ws://127.0.0.1:${port}/ws?device_id=${admin.device_id}&access_token=${admin.access_token}&instance_id=${instance.id}&last_output_offset=0&last_input_offset=0`;
 
     await expect(rejectUpgrade(validUrl, "https://evil.example.com")).resolves.toBe(403);
-    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/not-ws?device_id=${admin.device_id}&access_token=${admin.access_token}&instance_id=${instance.id}&last_output_offset=0`)).resolves.toBe(400);
+    await expect(rejectUpgrade(`ws://127.0.0.1:${port}/not-ws?device_id=${admin.device_id}&access_token=${admin.access_token}&instance_id=${instance.id}&last_output_offset=0&last_input_offset=0`)).resolves.toBe(400);
 
     const socket = await connectWebSocket(validUrl);
     expect(bootstrapServer.registry.list()).toHaveLength(1);
