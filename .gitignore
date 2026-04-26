@@ -35,6 +35,7 @@ shared/**/*.js
 
 # Claude Code local worktrees
 .claude/worktrees/
+.worktrees/
 AGENTS.md
 
 # IDE
