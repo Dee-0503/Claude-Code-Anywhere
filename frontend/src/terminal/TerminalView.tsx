@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactElement } from "react";
 import { Terminal } from "xterm";
 
-import { SERVER_MESSAGE_TYPES, type ConnectionState } from "../../../shared/protocol/messages.js";
+import { SERVER_MESSAGE_TYPES, INPUT_ACK_STATUSES, type ConnectionState, type InputAckMessagePayload } from "../../../shared/protocol/messages.js";
 import type { ClaudeInstanceId, DeviceId, InputMessageId } from "../../../shared/protocol/domain.js";
 import { ConnectionStatus, type DisplayConnectionState } from "../components/ConnectionStatus.js";
 import { OfflineInputConfirm } from "../components/OfflineInputConfirm.js";
@@ -43,6 +43,26 @@ export function createTerminalOutputSyncScheduler(
   };
 }
 
+export function recordAcceptedInputAck(
+  message: InputAckMessagePayload,
+  client: Pick<ProtocolClient, "updateRecoveryOffsets">,
+  inputOffsetRef: { current: number },
+  acknowledgedInputIdsRef: { current: Set<InputMessageId> },
+): boolean {
+  if (message.status !== INPUT_ACK_STATUSES.ACCEPTED) {
+    return false;
+  }
+  if (acknowledgedInputIdsRef.current.has(message.input_id)) {
+    return false;
+  }
+
+  acknowledgedInputIdsRef.current.add(message.input_id);
+  inputOffsetRef.current += 1;
+  saveLastInputOffset(message.instance_id, inputOffsetRef.current);
+  client.updateRecoveryOffsets?.({ lastInputOffset: inputOffsetRef.current });
+  return true;
+}
+
 export function TerminalView({ client, credentials, instanceId }: TerminalViewProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -51,6 +71,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
   const outputStateRef = useRef<TerminalOutputState>({ chunks: [], visibleLength: 0, scrollOffset: 0, maxLength: 1_000_000 });
   const inputClientRef = useRef<InputRecoveryClient | null>(null);
   const inputOffsetRef = useRef(loadLastInputOffset(instanceId));
+  const acknowledgedInputIdsRef = useRef<Set<InputMessageId>>(new Set());
   const [status, setStatus] = useState<ProtocolClientStatus>(client.status);
   const [connectionState, setConnectionState] = useState<DisplayConnectionState>(client.status);
   const [notice, setNotice] = useState("等待连接。");
@@ -112,6 +133,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
 
   useEffect(() => {
     inputOffsetRef.current = loadLastInputOffset(instanceId);
+    acknowledgedInputIdsRef.current = new Set();
   }, [instanceId]);
 
   useEffect(() => {
@@ -157,9 +179,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           break;
         case SERVER_MESSAGE_TYPES.INPUT_ACK:
           inputClientRef.current?.handleAck(message);
-          inputOffsetRef.current += 1;
-          saveLastInputOffset(message.instance_id, inputOffsetRef.current);
-          client.updateRecoveryOffsets?.({ lastInputOffset: inputOffsetRef.current });
+          recordAcceptedInputAck(message, client, inputOffsetRef, acknowledgedInputIdsRef);
           setPendingInputs(inputClientRef.current?.pending() ?? []);
           break;
         case SERVER_MESSAGE_TYPES.ERROR:
@@ -183,7 +203,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       instance_id: instanceId,
       last_output_offset: loadLastOutputOffset(instanceId),
       last_input_offset: loadLastInputOffset(instanceId),
-    } as Parameters<typeof client.connect>[0]);
+    });
 
     return () => client.disconnect(1000, "terminal view unmounted");
   }, [client, credentials, instanceId]);

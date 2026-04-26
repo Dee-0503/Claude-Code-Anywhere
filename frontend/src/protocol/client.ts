@@ -166,9 +166,8 @@ export class ProtocolClient {
     this.connectionParams = {
       ...this.connectionParams,
       last_output_offset: offsets.lastOutputOffset ?? this.connectionParams.last_output_offset,
-      ...("last_input_offset" in this.connectionParams ? { last_input_offset: (this.connectionParams as WebSocketConnectionParams & { last_input_offset?: number }).last_input_offset } : {}),
-      ...(offsets.lastInputOffset === undefined ? {} : { last_input_offset: offsets.lastInputOffset }),
-    } as WebSocketConnectionParams;
+      last_input_offset: offsets.lastInputOffset ?? this.connectionParams.last_input_offset,
+    };
   }
 
   sendInput(params: {
@@ -226,10 +225,7 @@ export class ProtocolClient {
     url.searchParams.set("access_token", params.access_token);
     url.searchParams.set("instance_id", params.instance_id satisfies ClaudeInstanceId);
     url.searchParams.set("last_output_offset", String(params.last_output_offset));
-    const paramsWithInputOffset = params as WebSocketConnectionParams & { last_input_offset?: number };
-    if (typeof paramsWithInputOffset.last_input_offset === "number") {
-      url.searchParams.set("last_input_offset", String(paramsWithInputOffset.last_input_offset));
-    }
+    url.searchParams.set("last_input_offset", String(params.last_input_offset));
     return url.toString();
   }
 

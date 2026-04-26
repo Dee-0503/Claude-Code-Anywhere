@@ -56,6 +56,10 @@ export function validateWebSocketHandshake(params: Partial<WebSocketConnectionPa
     throw webSocketError("INVALID_WEBSOCKET_HANDSHAKE", "last_output_offset must be a non-negative integer", 400);
   }
 
+  if (!isNonNegativeInteger(params.last_input_offset)) {
+    throw webSocketError("INVALID_WEBSOCKET_HANDSHAKE", "last_input_offset must be a non-negative integer", 400);
+  }
+
   if (!isNonEmptyString(params.access_token)) {
     throw webSocketError("MISSING_WEBSOCKET_TOKEN", "WebSocket access token is required", 401);
   }

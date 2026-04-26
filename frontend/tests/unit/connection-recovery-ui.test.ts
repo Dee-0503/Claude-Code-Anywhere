@@ -89,7 +89,7 @@ describe("connection recovery UI helpers", () => {
     const statuses: string[] = [];
     client.on("status", (status) => statuses.push(status));
 
-    client.connect({ device_id: "device-id", access_token: "token", instance_id: "instance-id", last_output_offset: 3 });
+    client.connect({ device_id: "device-id", access_token: "token", instance_id: "instance-id", last_output_offset: 3, last_input_offset: 0 });
     sockets[0]!.readyState = FakeWebSocket.OPEN;
     sockets[0]!.dispatch("open", new Event("open"));
     client.updateRecoveryOffsets({ lastOutputOffset: 9, lastInputOffset: 4 });
@@ -104,6 +104,56 @@ describe("connection recovery UI helpers", () => {
     const reconnectUrl = new URL(sockets[1]!.url);
     expect(reconnectUrl.searchParams.get("last_output_offset")).toBe("9");
     expect(reconnectUrl.searchParams.get("last_input_offset")).toBe("4");
+  });
+
+  it("coalesces repeated retryable closes into one reconnect attempt", () => {
+    const sockets: FakeWebSocket[] = [];
+    class FakeWebSocket {
+      static readonly CONNECTING = 0;
+      static readonly OPEN = 1;
+      static readonly CLOSING = 2;
+      static readonly CLOSED = 3;
+      readonly listeners = new Map<string, Array<(event: Event) => void>>();
+      readyState = FakeWebSocket.CONNECTING;
+      url: string;
+
+      constructor(url: string) {
+        this.url = url;
+        sockets.push(this);
+      }
+
+      addEventListener(event: string, listener: (event: Event) => void): void {
+        this.listeners.set(event, [...(this.listeners.get(event) ?? []), listener]);
+      }
+
+      close(): void {
+        this.readyState = FakeWebSocket.CLOSED;
+      }
+
+      send(): void {}
+
+      dispatch(event: string, payload: Event): void {
+        for (const listener of this.listeners.get(event) ?? []) {
+          listener(payload);
+        }
+      }
+    }
+
+    const client = new ProtocolClient({
+      url: "wss://terminal.example/ws",
+      WebSocketImpl: FakeWebSocket as unknown as typeof WebSocket,
+      reconnect: { initialDelayMs: 10, maxDelayMs: 20 },
+    });
+
+    client.connect({ device_id: "device-id", access_token: "token", instance_id: "instance-id", last_output_offset: 3, last_input_offset: 0 });
+    sockets[0]!.readyState = FakeWebSocket.CLOSED;
+    const retryableClose = { code: 1006, reason: "", wasClean: false } as CloseEvent;
+    sockets[0]!.dispatch("close", retryableClose);
+    sockets[0]!.dispatch("close", retryableClose);
+
+    vi.advanceTimersByTime(10);
+
+    expect(sockets).toHaveLength(2);
   });
 
   it("describes authorization prompts as terminal-native decisions", () => {

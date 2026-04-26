@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SERVER_MESSAGE_TYPES } from "../../../shared/protocol/messages.js";
+import { SERVER_MESSAGE_TYPES, INPUT_ACK_STATUSES } from "../../../shared/protocol/messages.js";
 import type { ServerToClientMessage } from "../../../shared/protocol/messages.js";
 import type { ProtocolClient, ProtocolClientEventMap, ProtocolClientStatus } from "../../src/protocol/client.js";
 
@@ -70,6 +70,7 @@ describe("TerminalView output synchronization", () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       acknowledgeOutput: vi.fn(),
+      updateRecoveryOffsets: vi.fn(),
     } as unknown as ProtocolClient;
     const container = document.createElement("div");
     const root = createRoot(container);
@@ -105,5 +106,83 @@ describe("TerminalView output synchronization", () => {
     act(() => {
       root.unmount();
     });
+  });
+
+  it("ignores duplicate accepted input acknowledgements when advancing recovery offset", async () => {
+    const { TerminalView } = await import("../../src/terminal/TerminalView.js");
+    const messageListeners: Array<(message: ServerToClientMessage) => void> = [];
+    const client = {
+      status: "open" as ProtocolClientStatus,
+      on: vi.fn((event: keyof ProtocolClientEventMap, listener: (payload: ProtocolClientEventMap[keyof ProtocolClientEventMap]) => void) => {
+        if (event === "message") {
+          messageListeners.push(listener as (message: ServerToClientMessage) => void);
+        }
+        return () => undefined;
+      }),
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      acknowledgeOutput: vi.fn(),
+      updateRecoveryOffsets: vi.fn(),
+    } as unknown as ProtocolClient;
+    const container = document.createElement("div");
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(<TerminalView client={client} credentials={{ device_id: "device-id", access_token: "token" }} instanceId="instance-id" />);
+    });
+
+    act(() => {
+      const emit = messageListeners[0] as (message: ServerToClientMessage) => void;
+      emit({ type: SERVER_MESSAGE_TYPES.INPUT_ACK, instance_id: "instance-id", input_id: "input-1", status: INPUT_ACK_STATUSES.ACCEPTED });
+      emit({ type: SERVER_MESSAGE_TYPES.INPUT_ACK, instance_id: "instance-id", input_id: "input-1", status: INPUT_ACK_STATUSES.ACCEPTED });
+      emit({ type: SERVER_MESSAGE_TYPES.INPUT_ACK, instance_id: "instance-id", input_id: "input-2", status: INPUT_ACK_STATUSES.DUPLICATE });
+      emit({ type: SERVER_MESSAGE_TYPES.INPUT_ACK, instance_id: "instance-id", input_id: "input-3", status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION });
+    });
+
+    expect(client.updateRecoveryOffsets).toHaveBeenCalledTimes(1);
+    expect(client.updateRecoveryOffsets).toHaveBeenCalledWith({ lastInputOffset: 1 });
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it("unsubscribes message handlers so stale socket events cannot update unmounted state", async () => {
+    const { TerminalView } = await import("../../src/terminal/TerminalView.js");
+    const messageListeners = new Set<(message: ServerToClientMessage) => void>();
+    const client = {
+      status: "open" as ProtocolClientStatus,
+      on: vi.fn((event: keyof ProtocolClientEventMap, listener: (payload: ProtocolClientEventMap[keyof ProtocolClientEventMap]) => void) => {
+        if (event === "message") {
+          const typedListener = listener as (message: ServerToClientMessage) => void;
+          messageListeners.add(typedListener);
+          return () => messageListeners.delete(typedListener);
+        }
+        return () => undefined;
+      }),
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      acknowledgeOutput: vi.fn(),
+      updateRecoveryOffsets: vi.fn(),
+    } as unknown as ProtocolClient;
+    const container = document.createElement("div");
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(<TerminalView client={client} credentials={null} instanceId="instance-id" />);
+    });
+
+    expect(messageListeners.size).toBe(1);
+
+    act(() => {
+      root.unmount();
+    });
+
+    expect(messageListeners.size).toBe(0);
+    for (const listener of messageListeners) {
+      listener({ type: SERVER_MESSAGE_TYPES.OUTPUT, instance_id: "instance-id", offset: 0, data: "stale" });
+    }
+
+    expect(client.acknowledgeOutput).not.toHaveBeenCalled();
   });
 });

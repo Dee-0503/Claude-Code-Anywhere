@@ -11,12 +11,14 @@ import {
   type WebSocketConnectionParams,
 } from "../../../shared/protocol/messages.js";
 import { createWebSocketProtocolService } from "../../src/api/websocket-protocol.js";
+import { parseConnectionParams } from "../../src/api/websocket-server.js";
 
 const connectionParams: WebSocketConnectionParams = {
   device_id: "device-id",
   access_token: "secret-token",
   instance_id: "instance-id",
   last_output_offset: 0,
+  last_input_offset: 0,
 };
 
 const attachableInstance: ClaudeInstance = {
@@ -69,6 +71,35 @@ describe("websocket protocol contract", () => {
       connection_id: expect.any(String),
       next_output_offset: expect.any(Number),
     } satisfies HelloMessagePayload);
+  });
+
+  it("parses and validates websocket recovery query offsets", () => {
+    expect(parseConnectionParams(new URLSearchParams({
+      device_id: "device-id",
+      access_token: "secret-token",
+      instance_id: "instance-id",
+      last_output_offset: "12",
+      last_input_offset: "4",
+    }))).toEqual({
+      ...connectionParams,
+      last_output_offset: 12,
+      last_input_offset: 4,
+    });
+
+    expect(() => parseConnectionParams(new URLSearchParams({
+      device_id: "device-id",
+      access_token: "secret-token",
+      instance_id: "instance-id",
+      last_output_offset: "12",
+    }))).toThrow(/last_input_offset/);
+
+    expect(() => parseConnectionParams(new URLSearchParams({
+      device_id: "device-id",
+      access_token: "secret-token",
+      instance_id: "instance-id",
+      last_output_offset: "12",
+      last_input_offset: "-1",
+    }))).toThrow(/last_input_offset/);
   });
 
   it("serializes hello, output, ack_output, and output_gap with the contract field names", () => {

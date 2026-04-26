@@ -118,6 +118,8 @@ export function parseConnectionParams(searchParams: URLSearchParams): Partial<We
   const instanceId = searchParams.get("instance_id");
   const lastOutputOffsetRaw = searchParams.get("last_output_offset");
   const lastOutputOffset = lastOutputOffsetRaw === null ? NaN : Number(lastOutputOffsetRaw);
+  const lastInputOffsetRaw = searchParams.get("last_input_offset");
+  const lastInputOffset = lastInputOffsetRaw === null ? NaN : Number(lastInputOffsetRaw);
 
   if (!isNonEmptyString(deviceId)) {
     throw invalidRequest("device_id must be a non-empty string", { field: "device_id" });
@@ -133,11 +135,18 @@ export function parseConnectionParams(searchParams: URLSearchParams): Partial<We
     });
   }
 
+  if (!isNonNegativeInteger(lastInputOffset)) {
+    throw invalidRequest("last_input_offset must be a non-negative integer", {
+      field: "last_input_offset",
+    });
+  }
+
   return {
     device_id: deviceId,
     ...(accessToken === undefined ? {} : { access_token: accessToken }),
     instance_id: instanceId,
     last_output_offset: lastOutputOffset,
+    last_input_offset: lastInputOffset,
   };
 }
 

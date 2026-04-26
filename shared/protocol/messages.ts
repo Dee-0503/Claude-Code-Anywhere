@@ -36,6 +36,7 @@ export interface WebSocketConnectionParams {
   access_token: string;
   instance_id: string;
   last_output_offset: number;
+  last_input_offset: number;
 }
 
 export interface InputMessagePayload {
