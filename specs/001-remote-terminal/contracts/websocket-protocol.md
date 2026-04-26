@@ -60,6 +60,13 @@ The server authenticates the device before attaching it to a Claude instance.
 }
 ```
 
+`status` values:
+
+- `accepted`: Input was accepted and no retry is needed.
+- `duplicate`: The server has already seen this `input_id`; clients must stop retrying it.
+- `pending_confirmation`: The input is accepted into a confirmation queue, currently used for Ctrl+C interrupts; clients must stop automatic retries and drive the confirmation UI through queued input / interrupt confirmation state.
+- `rejected`: Input was refused and must not be retried without a new user action.
+
 ### `connection_state`
 
 ```json
@@ -109,3 +116,4 @@ The server authenticates the device before attaching it to a Claude instance.
 - Server sends `output_gap` when replay history has been evicted.
 - Input messages are idempotent by `(device_id, input_id)`.
 - Clients retry unacknowledged input after 3 seconds unless the connection is closed.
+- Clients that receive `input_ack.status = "pending_confirmation"` must treat the input as acknowledged but awaiting user confirmation; they must not classify it as failed and must not retry it automatically.

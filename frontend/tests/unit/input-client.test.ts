@@ -57,6 +57,33 @@ describe("input recovery client", () => {
     expect(client.pending()).toEqual([]);
   });
 
+  it("keeps pending confirmation input from retrying after pending_confirmation ack", () => {
+    vi.useFakeTimers();
+    const transport = createTransport();
+    const client = createInputRecoveryClient({
+      deviceId: "device-id",
+      instanceId: "instance-id",
+      transport,
+      retryAfterMs: 1_000,
+      createInputId: () => "interrupt-1",
+    });
+
+    client.send("");
+    client.handleMessage({
+      type: SERVER_MESSAGE_TYPES.INPUT_ACK,
+      instance_id: "instance-id",
+      input_id: "interrupt-1",
+      status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION,
+    });
+    vi.advanceTimersByTime(1_000);
+
+    expect(transport.sendInput).toHaveBeenCalledTimes(1);
+    expect(client.pending()).toEqual([
+      expect.objectContaining({ inputId: "interrupt-1", awaitingConfirmation: true }),
+    ]);
+    vi.useRealTimers();
+  });
+
   it("queues offline input until the user confirms replay", () => {
     const transport = createTransport();
     const client = createInputRecoveryClient({

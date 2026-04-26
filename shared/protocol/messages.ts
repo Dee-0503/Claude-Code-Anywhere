@@ -1,6 +1,9 @@
 export const CLIENT_MESSAGE_TYPES = {
   INPUT: "input",
   ACK_OUTPUT: "ack_output",
+  CANCEL_INPUT: "cancel_input",
+  CONFIRM_INTERRUPT: "confirm_interrupt",
+  CANCEL_INTERRUPT: "cancel_interrupt",
   HEARTBEAT: "heartbeat",
 } as const;
 
@@ -9,6 +12,8 @@ export const SERVER_MESSAGE_TYPES = {
   OUTPUT: "output",
   OUTPUT_GAP: "output_gap",
   INPUT_ACK: "input_ack",
+  QUEUED_INPUTS: "queued_inputs",
+  PRESENCE: "presence",
   CONNECTION_STATE: "connection_state",
   ERROR: "error",
 } as const;
@@ -46,6 +51,24 @@ export interface AckOutputMessagePayload {
   offset: number;
 }
 
+export interface CancelInputMessagePayload {
+  type: typeof CLIENT_MESSAGE_TYPES.CANCEL_INPUT;
+  instance_id: string;
+  input_id: string;
+}
+
+export interface ConfirmInterruptMessagePayload {
+  type: typeof CLIENT_MESSAGE_TYPES.CONFIRM_INTERRUPT;
+  instance_id: string;
+  input_id: string;
+}
+
+export interface CancelInterruptMessagePayload {
+  type: typeof CLIENT_MESSAGE_TYPES.CANCEL_INTERRUPT;
+  instance_id: string;
+  input_id: string;
+}
+
 export interface HeartbeatMessagePayload {
   type: typeof CLIENT_MESSAGE_TYPES.HEARTBEAT;
   sent_at: string;
@@ -76,6 +99,7 @@ export interface OutputGapMessagePayload {
 export const INPUT_ACK_STATUSES = {
   ACCEPTED: "accepted",
   DUPLICATE: "duplicate",
+  PENDING_CONFIRMATION: "pending_confirmation",
   REJECTED: "rejected",
 } as const;
 
@@ -87,6 +111,26 @@ export interface InputAckMessagePayload {
   instance_id: string;
   input_id: string;
   status: InputAckStatus;
+}
+
+export interface QueuedInputMessagePayload {
+  type: typeof SERVER_MESSAGE_TYPES.QUEUED_INPUTS;
+  instance_id: string;
+  inputs: Array<{
+    input_id: string;
+    device_id: string;
+    payload: string;
+    status: "queued";
+  }>;
+}
+
+export interface PresenceMessagePayload {
+  type: typeof SERVER_MESSAGE_TYPES.PRESENCE;
+  instance_id: string;
+  devices: Array<{
+    device_id: string;
+    connection_id: string;
+  }>;
 }
 
 export const CONNECTION_STATES = {
@@ -106,6 +150,9 @@ export interface ConnectionStateMessagePayload {
 export type ClientToServerMessage =
   | InputMessagePayload
   | AckOutputMessagePayload
+  | CancelInputMessagePayload
+  | ConfirmInterruptMessagePayload
+  | CancelInterruptMessagePayload
   | HeartbeatMessagePayload;
 
 export type ServerToClientMessage =
@@ -113,6 +160,8 @@ export type ServerToClientMessage =
   | OutputMessagePayload
   | OutputGapMessagePayload
   | InputAckMessagePayload
+  | QueuedInputMessagePayload
+  | PresenceMessagePayload
   | ConnectionStateMessagePayload
   | ErrorMessagePayload;
 
