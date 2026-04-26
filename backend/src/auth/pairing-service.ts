@@ -117,6 +117,7 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
   }
 
   async function consumePairingCode(input: ConsumePairingCodeInput): Promise<PairedDeviceResponse> {
+    const timestamp = now();
     const pairing = await pairings.findByCode(input.pairing_code);
     if (pairing === undefined) {
       throw serviceError("PAIRING_CODE_INVALID", "Invalid pairing code");
@@ -124,23 +125,27 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
     if (pairing.usedAt !== null) {
       throw serviceError("PAIRING_CODE_ALREADY_USED", "Pairing code already used");
     }
-    if (new Date(pairing.expiresAt).getTime() <= now().getTime()) {
+    if (new Date(pairing.expiresAt).getTime() <= timestamp.getTime()) {
       throw serviceError("PAIRING_CODE_EXPIRED", "Pairing code expired");
     }
 
     const accessToken = generateToken();
-    const timestamp = now().toISOString();
+    const issuedAt = timestamp.toISOString();
     const role = pairing.createdByDeviceId === null ? DEVICE_ROLES.ADMIN : DEVICE_ROLES.MEMBER;
     const device = devices.create({
       id: randomUUID(),
       name: input.device_name,
       role,
       tokenHash: await hashToken(accessToken),
-      createdAt: timestamp,
-      lastSeenAt: timestamp,
+      createdAt: issuedAt,
+      lastSeenAt: issuedAt,
       revokedAt: null,
     });
-    pairings.markUsed(pairing.id, device.id, timestamp);
+    const claimed = pairings.claim(pairing.id, device.id, issuedAt, timestamp);
+    if (claimed === undefined) {
+      devices.delete(device.id);
+      throw serviceError("PAIRING_CODE_ALREADY_USED", "Pairing code already used");
+    }
 
     return { device_id: device.id, access_token: accessToken, role };
   }

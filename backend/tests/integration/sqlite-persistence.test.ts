@@ -1,6 +1,8 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -15,6 +17,8 @@ import { createSqliteInputRepository } from "../../src/sessions/input-repository
 import { createSqliteInstanceRepository } from "../../src/sessions/instance-repository.js";
 
 const tempDirs: string[] = [];
+const testDirectory = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(testDirectory, "../../..");
 
 function createDatabasePath(): string {
   const directory = mkdtempSync(join(tmpdir(), "cca-sqlite-persistence-"));
@@ -156,5 +160,61 @@ describe("SQLite repository persistence", () => {
 
       closeDatabaseConnection(database);
     }
+  });
+
+  it("persists repository state across separate Node processes", () => {
+    const databasePath = createDatabasePath();
+    const writerPath = join(dirname(databasePath), "write-state.mjs");
+    const readerPath = join(dirname(databasePath), "read-state.mjs");
+
+    writeFileSync(
+      writerPath,
+      `
+        import { createSqliteDeviceRepository } from "${repoRoot}/backend/dist/backend/src/auth/device-repository.js";
+        import { hashToken } from "${repoRoot}/backend/dist/backend/src/auth/tokens.js";
+        import { openDatabaseConnection, closeDatabaseConnection } from "${repoRoot}/backend/dist/backend/src/db/connection.js";
+        import { runMigrations } from "${repoRoot}/backend/dist/backend/src/db/migrations.js";
+        import { readFileSync } from "node:fs";
+        import { join } from "node:path";
+        const database = openDatabaseConnection({ path: process.argv[2] });
+        runMigrations(database, [{ version: 1, name: "initial_schema", sql: readFileSync(join(process.argv[3], "backend/src/db/schema.sql"), "utf8") }]);
+        createSqliteDeviceRepository(database).create({
+          id: "process-device",
+          name: "Process Browser",
+          role: "admin",
+          tokenHash: await hashToken("process-token"),
+          createdAt: "2026-04-26T01:00:00.000Z",
+          lastSeenAt: "2026-04-26T01:00:00.000Z",
+          revokedAt: null,
+        });
+        closeDatabaseConnection(database);
+      `,
+    );
+    writeFileSync(
+      readerPath,
+      `
+        import { createSqliteDeviceRepository } from "${repoRoot}/backend/dist/backend/src/auth/device-repository.js";
+        import { openDatabaseConnection, closeDatabaseConnection } from "${repoRoot}/backend/dist/backend/src/db/connection.js";
+        import { runMigrations } from "${repoRoot}/backend/dist/backend/src/db/migrations.js";
+        import { readFileSync } from "node:fs";
+        import { join } from "node:path";
+        const database = openDatabaseConnection({ path: process.argv[2] });
+        runMigrations(database, [{ version: 1, name: "initial_schema", sql: readFileSync(join(process.argv[3], "backend/src/db/schema.sql"), "utf8") }]);
+        const device = await createSqliteDeviceRepository(database).verifyToken("process-device", "process-token");
+        closeDatabaseConnection(database);
+        if (device?.name !== "Process Browser") {
+          throw new Error("Persisted device was not readable in a separate process");
+        }
+      `,
+    );
+
+    execFileSync(process.execPath, [writerPath, databasePath, repoRoot], {
+      cwd: repoRoot,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, [readerPath, databasePath, repoRoot], {
+      cwd: repoRoot,
+      stdio: "pipe",
+    });
   });
 });

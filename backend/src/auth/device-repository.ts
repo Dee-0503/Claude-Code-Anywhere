@@ -10,6 +10,7 @@ export interface DeviceRepository {
   updateLastSeen(deviceId: DeviceId, lastSeenAt: string): Device | undefined;
   updateRole(deviceId: DeviceId, role: Device["role"]): Device | undefined;
   revoke(deviceId: DeviceId, revokedAt: string): Device | undefined;
+  delete(deviceId: DeviceId): boolean;
   verifyToken(deviceId: DeviceId, accessToken: string): Promise<Device | undefined>;
 }
 
@@ -73,6 +74,10 @@ export function createSqliteDeviceRepository(database: SqliteDatabase): DeviceRe
       database.prepare("UPDATE devices SET revoked_at = ? WHERE id = ?").run(revokedAt, deviceId);
       return this.getById(deviceId);
     },
+    delete(deviceId) {
+      const result = database.prepare("DELETE FROM devices WHERE id = ?").run(deviceId);
+      return result.changes === 1;
+    },
     async verifyToken(deviceId, accessToken) {
       const device = this.getById(deviceId);
       if (device === undefined) return undefined;
@@ -122,6 +127,9 @@ export function createInMemoryDeviceRepository(): DeviceRepository {
       const updated = { ...device, revokedAt };
       devices.set(deviceId, updated);
       return updated;
+    },
+    delete(deviceId) {
+      return devices.delete(deviceId);
     },
     async verifyToken(deviceId, accessToken) {
       const device = devices.get(deviceId);

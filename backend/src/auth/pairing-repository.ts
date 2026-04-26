@@ -7,6 +7,7 @@ export interface PairingRepository {
   findByCode(code: string): Promise<PairingCode | undefined>;
   activeBootstrap(now: Date): PairingCode | undefined;
   markUsed(pairingId: PairingCodeId, usedByDeviceId: DeviceId, usedAt: string): PairingCode | undefined;
+  claim(pairingId: PairingCodeId, usedByDeviceId: DeviceId, usedAt: string, now: Date): PairingCode | undefined;
 }
 
 interface PairingRow {
@@ -65,6 +66,16 @@ export function createSqlitePairingRepository(database: SqliteDatabase): Pairing
       const row = selectById.get(pairingId) as PairingRow | undefined;
       return row === undefined ? undefined : mapPairing(row);
     },
+    claim(pairingId, usedByDeviceId, usedAt, now) {
+      const result = database.prepare(`
+        UPDATE pairing_codes
+        SET used_at = ?, used_by_device_id = ?
+        WHERE id = ? AND used_at IS NULL AND expires_at > ?
+      `).run(usedAt, usedByDeviceId, pairingId, now.toISOString());
+      if (result.changes !== 1) return undefined;
+      const row = selectById.get(pairingId) as PairingRow | undefined;
+      return row === undefined ? undefined : mapPairing(row);
+    },
   };
 }
 
@@ -99,6 +110,15 @@ export function createInMemoryPairingRepository(): PairingRepository {
     markUsed(pairingId, usedByDeviceId, usedAt) {
       const pairing = pairings.get(pairingId);
       if (pairing === undefined) return undefined;
+      const updated = { ...pairing, usedAt, usedByDeviceId };
+      pairings.set(pairingId, updated);
+      return updated;
+    },
+    claim(pairingId, usedByDeviceId, usedAt, now) {
+      const pairing = pairings.get(pairingId);
+      if (pairing === undefined) return undefined;
+      if (pairing.usedAt !== null) return undefined;
+      if (new Date(pairing.expiresAt).getTime() <= now.getTime()) return undefined;
       const updated = { ...pairing, usedAt, usedByDeviceId };
       pairings.set(pairingId, updated);
       return updated;

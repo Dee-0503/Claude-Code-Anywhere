@@ -50,6 +50,26 @@ describe("auth pairing contract", () => {
     ).rejects.toMatchObject({ code: "PAIRING_CODE_ALREADY_USED" });
   });
 
+  it("rejects a raced pairing claim without keeping an issued device", async () => {
+    const devices = createInMemoryDeviceRepository();
+    const pairings = createInMemoryPairingRepository();
+    const service = createBootstrapPairingService({
+      now: () => NOW,
+      pairingTtlMs: TEN_MINUTES_MS,
+      devices,
+      pairings,
+    });
+    const { pairing_code } = await service.createBootstrapPairingCode();
+    const storedPairing = await pairings.findByCode(pairing_code);
+    expect(storedPairing).toBeDefined();
+    pairings.markUsed(storedPairing!.id, "other-device", NOW.toISOString());
+
+    await expect(
+      service.consumePairingCode({ pairing_code, device_name: "Raced browser" }),
+    ).rejects.toMatchObject({ code: "PAIRING_CODE_ALREADY_USED" });
+    expect(devices.list()).toEqual([]);
+  });
+
   it("stores issued device tokens as password hashes instead of raw or SHA-256 digests", async () => {
     const devices = createInMemoryDeviceRepository();
     const service = createBootstrapPairingService({
