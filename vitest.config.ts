@@ -9,6 +9,18 @@ export default defineConfig({
       'shared/tests/**/*.test.ts'
     ],
     coverage: {
+      provider: 'v8',
+      include: [
+        'backend/src/**/*.ts',
+        'frontend/src/protocol/**/*.ts'
+      ],
+      exclude: [
+        '**/*.d.ts',
+        '**/*.test.{ts,tsx}',
+        '**/tests/**',
+        '**/node_modules/**',
+        '**/dist/**'
+      ],
       reporter: ['text', 'json', 'html'],
       reportsDirectory: 'coverage'
     },
