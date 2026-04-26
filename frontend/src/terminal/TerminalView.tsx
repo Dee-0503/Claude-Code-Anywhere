@@ -6,6 +6,9 @@ import { SERVER_MESSAGE_TYPES, type ConnectionState } from "../../../shared/prot
 import type { ClaudeInstanceId, DeviceId, InputMessageId } from "../../../shared/protocol/domain.js";
 import { ConnectionStatus, type DisplayConnectionState } from "../components/ConnectionStatus.js";
 import { OfflineInputConfirm } from "../components/OfflineInputConfirm.js";
+import { TerminalSearch } from "../components/TerminalSearch.js";
+import { appendTerminalOutput, type TerminalOutputState } from "./outputRenderer.js";
+import { calculateTerminalScale } from "./scaling.js";
 import type { ProtocolClient, ProtocolClientStatus } from "../protocol/client.js";
 import type { DeviceCredentials } from "../protocol/device-credentials.js";
 import { createInputRecoveryClient, type InputRecoveryClient, type PendingInput } from "../protocol/input-client.js";
@@ -25,11 +28,14 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fallbackBufferRef = useRef("");
+  const outputStateRef = useRef<TerminalOutputState>({ text: "", scrollOffset: 0, maxLength: 1_000_000 });
   const inputClientRef = useRef<InputRecoveryClient | null>(null);
   const [status, setStatus] = useState<ProtocolClientStatus>(client.status);
   const [connectionState, setConnectionState] = useState<DisplayConnectionState>(client.status);
   const [notice, setNotice] = useState("等待连接。");
   const [fallbackInput, setFallbackInput] = useState("");
+  const [terminalOutput, setTerminalOutput] = useState("");
+  const [terminalScale, setTerminalScale] = useState(calculateTerminalScale({ containerWidth: 960, characterWidth: 8 }));
   const [pendingInputs, setPendingInputs] = useState<PendingInput[]>([]);
 
   useEffect(() => client.on("status", (nextStatus) => {
@@ -44,7 +50,11 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       return;
     }
 
-    const terminal = new Terminal({ cols: 120, rows: 30, convertEol: true });
+    const measuredWidth = containerRef.current.clientWidth || 960;
+    const nextScale = calculateTerminalScale({ containerWidth: measuredWidth, characterWidth: 8 });
+    setTerminalScale(nextScale);
+
+    const terminal = new Terminal({ cols: nextScale.columns, rows: 30, convertEol: true });
     terminal.open(containerRef.current);
     terminalRef.current = terminal;
 
@@ -85,8 +95,9 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           setNotice(`已连接，服务端输出偏移：${message.next_output_offset}`);
           break;
         case SERVER_MESSAGE_TYPES.OUTPUT: {
-          terminalRef.current?.write(message.data);
-          fallbackBufferRef.current = `${fallbackBufferRef.current}${message.data}`;
+          outputStateRef.current = appendTerminalOutput(outputStateRef.current, message, terminalRef.current);
+          fallbackBufferRef.current = outputStateRef.current.text;
+          setTerminalOutput(outputStateRef.current.text);
           const nextOffset = message.offset + message.data.length;
           saveLastOutputOffset(message.instance_id, nextOffset);
           client.acknowledgeOutput(message.instance_id, nextOffset);
@@ -153,8 +164,13 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       <p>连接状态：{status}</p>
       <ConnectionStatus state={connectionState} />
       <OfflineInputConfirm pendingInputs={pendingInputs} onConfirm={handleConfirmOfflineInput} />
+      <TerminalSearch output={terminalOutput} />
       <p>{notice}</p>
-      <div ref={containerRef} role="terminal" style={{ minHeight: "24rem", width: "100%" }} />
+      <div
+        ref={containerRef}
+        role="terminal"
+        style={{ minHeight: "24rem", transform: `scale(${terminalScale.scale})`, transformOrigin: "top left", width: `${terminalScale.contentWidth}px` }}
+      />
       <label>
         输入备用区
         <textarea
@@ -164,7 +180,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           value={fallbackInput}
         />
       </label>
-      <pre aria-label="终端输出备用区">{fallbackBufferRef.current}</pre>
+      <pre aria-label="终端输出备用区">{terminalOutput}</pre>
     </section>
   );
 }
