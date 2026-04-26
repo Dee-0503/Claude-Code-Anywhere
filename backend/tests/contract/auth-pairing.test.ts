@@ -70,6 +70,91 @@ describe("auth pairing contract", () => {
     expect(devices.list()).toEqual([]);
   });
 
+  it("locks pairing consumption after repeated failed attempts and clears attempts after success", async () => {
+    let currentTime = NOW;
+    const service = createBootstrapPairingService({
+      now: () => currentTime,
+      pairingTtlMs: TEN_MINUTES_MS,
+      maxFailedPairingAttempts: 2,
+      pairingAttemptCooldownMs: 60_000,
+    });
+    const { pairing_code } = await service.createBootstrapPairingCode();
+
+    await expect(
+      service.consumePairingCode({ pairing_code: "000-000", device_name: "Mallory 1", requester_key: "ip:203.0.113.10" }),
+    ).rejects.toMatchObject({ code: "PAIRING_CODE_INVALID" });
+    await expect(
+      service.consumePairingCode({ pairing_code: "000-001", device_name: "Mallory 2", requester_key: "ip:203.0.113.10" }),
+    ).rejects.toMatchObject({ code: "PAIRING_CODE_INVALID" });
+    await expect(
+      service.consumePairingCode({ pairing_code, device_name: "Legit browser", requester_key: "ip:203.0.113.10" }),
+    ).rejects.toMatchObject({ code: "PAIRING_ATTEMPTS_LOCKED" });
+
+    currentTime = new Date(NOW.getTime() + 60_001);
+    const pairedDevice = await service.consumePairingCode({
+      pairing_code,
+      device_name: "Legit browser",
+      requester_key: "ip:203.0.113.10",
+    });
+    expect(pairedDevice).toMatchObject({ role: DEVICE_ROLES.ADMIN });
+
+    const memberPairing = await service.createPairingCode({
+      device_id: pairedDevice.device_id,
+      access_token: pairedDevice.access_token,
+    });
+    await expect(
+      service.consumePairingCode({ pairing_code: memberPairing.pairing_code, device_name: "Member browser" }),
+    ).resolves.toMatchObject({ role: DEVICE_ROLES.MEMBER });
+  });
+
+  it("scopes pairing failed-attempt lockouts by requester when provided", async () => {
+    const service = createBootstrapPairingService({
+      now: () => NOW,
+      pairingTtlMs: TEN_MINUTES_MS,
+      maxFailedPairingAttempts: 2,
+      pairingAttemptCooldownMs: 60_000,
+    });
+    const { pairing_code } = await service.createBootstrapPairingCode();
+
+    await expect(
+      service.consumePairingCode({ pairing_code: "000-000", device_name: "Mallory 1", requester_key: "ip:203.0.113.10" }),
+    ).rejects.toMatchObject({ code: "PAIRING_CODE_INVALID" });
+    await expect(
+      service.consumePairingCode({ pairing_code: "000-001", device_name: "Mallory 2", requester_key: "ip:203.0.113.10" }),
+    ).rejects.toMatchObject({ code: "PAIRING_CODE_INVALID" });
+    await expect(
+      service.consumePairingCode({ pairing_code, device_name: "Blocked browser", requester_key: "ip:203.0.113.10" }),
+    ).rejects.toMatchObject({ code: "PAIRING_ATTEMPTS_LOCKED" });
+
+    await expect(
+      service.consumePairingCode({ pairing_code, device_name: "Legit browser", requester_key: "ip:203.0.113.20" }),
+    ).resolves.toMatchObject({ role: DEVICE_ROLES.ADMIN });
+  });
+
+  it("uses pairing code as a fallback lockout boundary when no requester key is provided", async () => {
+    const service = createBootstrapPairingService({
+      now: () => NOW,
+      pairingTtlMs: TEN_MINUTES_MS,
+      maxFailedPairingAttempts: 2,
+      pairingAttemptCooldownMs: 60_000,
+    });
+    const { pairing_code } = await service.createBootstrapPairingCode();
+
+    await expect(
+      service.consumePairingCode({ pairing_code: "000-000", device_name: "Mallory 1" }),
+    ).rejects.toMatchObject({ code: "PAIRING_CODE_INVALID" });
+    await expect(
+      service.consumePairingCode({ pairing_code: "000-000", device_name: "Mallory 2" }),
+    ).rejects.toMatchObject({ code: "PAIRING_CODE_INVALID" });
+    await expect(
+      service.consumePairingCode({ pairing_code: "000-000", device_name: "Mallory 3" }),
+    ).rejects.toMatchObject({ code: "PAIRING_ATTEMPTS_LOCKED" });
+
+    await expect(
+      service.consumePairingCode({ pairing_code, device_name: "Legit browser" }),
+    ).resolves.toMatchObject({ role: DEVICE_ROLES.ADMIN });
+  });
+
   it("stores issued device tokens as password hashes instead of raw or SHA-256 digests", async () => {
     const devices = createInMemoryDeviceRepository();
     const service = createBootstrapPairingService({

@@ -53,6 +53,9 @@ async function createFixture() {
     heartbeatTimeoutMs: 45_000,
     websocketPath: "/ws",
     websocketAllowedOrigins: ["https://console.example.com"],
+    instanceAllowedWorkspaceRoots: [process.cwd()],
+    instanceMaxActivePerDevice: 4,
+    instanceMaxActiveGlobal: 16,
   }, undefined, {
     verifyDeviceToken: service.verifyDeviceToken,
     findInstanceById: instances.getInstance,

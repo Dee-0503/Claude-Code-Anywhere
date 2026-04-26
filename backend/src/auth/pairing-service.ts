@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 
 import { DEVICE_ROLES, type Device, type DeviceId, type DeviceRole } from "../../../shared/protocol/domain.js";
 import { createApiError } from "../api/errors.js";
@@ -11,6 +11,8 @@ export interface PairingServiceOptions {
   readonly pairingTtlMs?: number;
   readonly devices?: DeviceRepository;
   readonly pairings?: PairingRepository;
+  readonly maxFailedPairingAttempts?: number;
+  readonly pairingAttemptCooldownMs?: number;
 }
 
 export interface PairingCodeResponse {
@@ -21,6 +23,7 @@ export interface PairingCodeResponse {
 export interface ConsumePairingCodeInput {
   readonly pairing_code: string;
   readonly device_name: string;
+  readonly requester_key?: string;
 }
 
 export interface PairedDeviceResponse {
@@ -56,6 +59,38 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
   const pairingTtlMs = options.pairingTtlMs ?? 10 * 60 * 1000;
   const devices = options.devices ?? createInMemoryDeviceRepository();
   const pairings = options.pairings ?? createInMemoryPairingRepository();
+  const maxFailedPairingAttempts = options.maxFailedPairingAttempts ?? 5;
+  const pairingAttemptCooldownMs = options.pairingAttemptCooldownMs ?? 5 * 60 * 1000;
+
+  function attemptKey(input: ConsumePairingCodeInput): string {
+    const requesterKey = input.requester_key?.trim();
+    if (requesterKey !== undefined && requesterKey.length > 0) {
+      const digest = createHash("sha256").update("requester_key:").update(requesterKey).digest("hex");
+      return `pairing-consume:requester:${digest}`;
+    }
+    const digest = createHash("sha256").update("pairing_code:").update(input.pairing_code).digest("hex");
+    return `pairing-consume:code:${digest}`;
+  }
+
+  function assertNotLocked(key: string, timestamp: Date): void {
+    const state = pairings.getAttemptState(key);
+    if (state?.lockedUntil !== null && state?.lockedUntil !== undefined) {
+      const lockedUntil = new Date(state.lockedUntil);
+      if (lockedUntil.getTime() > timestamp.getTime()) {
+        throw serviceError("PAIRING_ATTEMPTS_LOCKED", "Pairing attempts temporarily locked");
+      }
+      pairings.clearAttemptState(key);
+    }
+  }
+
+  function recordFailedAttempt(key: string, timestamp: Date): void {
+    pairings.recordFailedAttempt({
+      key,
+      failedAt: timestamp,
+      maxFailedAttempts: maxFailedPairingAttempts,
+      cooldownMs: pairingAttemptCooldownMs,
+    });
+  }
 
   async function verifyDeviceToken(input: AuthenticatedDeviceInput): Promise<Device & { device_id: string }> {
     const device = devices.getById(input.device_id);
@@ -118,14 +153,20 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
 
   async function consumePairingCode(input: ConsumePairingCodeInput): Promise<PairedDeviceResponse> {
     const timestamp = now();
+    const key = attemptKey(input);
+    assertNotLocked(key, timestamp);
+
     const pairing = await pairings.findByCode(input.pairing_code);
     if (pairing === undefined) {
+      recordFailedAttempt(key, timestamp);
       throw serviceError("PAIRING_CODE_INVALID", "Invalid pairing code");
     }
     if (pairing.usedAt !== null) {
+      recordFailedAttempt(key, timestamp);
       throw serviceError("PAIRING_CODE_ALREADY_USED", "Pairing code already used");
     }
     if (new Date(pairing.expiresAt).getTime() <= timestamp.getTime()) {
+      recordFailedAttempt(key, timestamp);
       throw serviceError("PAIRING_CODE_EXPIRED", "Pairing code expired");
     }
 
@@ -144,9 +185,11 @@ export function createBootstrapPairingService(options: PairingServiceOptions = {
     const claimed = pairings.claim(pairing.id, device.id, issuedAt, timestamp);
     if (claimed === undefined) {
       devices.delete(device.id);
+      recordFailedAttempt(key, timestamp);
       throw serviceError("PAIRING_CODE_ALREADY_USED", "Pairing code already used");
     }
 
+    pairings.clearAttemptState(key);
     return { device_id: device.id, access_token: accessToken, role };
   }
 

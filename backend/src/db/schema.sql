@@ -28,6 +28,15 @@ CREATE TABLE IF NOT EXISTS pairing_codes (
 
 CREATE INDEX IF NOT EXISTS idx_pairing_codes_expires_at ON pairing_codes(expires_at);
 
+CREATE TABLE IF NOT EXISTS pairing_attempts (
+  key TEXT PRIMARY KEY,
+  failed_attempts INTEGER NOT NULL DEFAULT 0 CHECK (failed_attempts >= 0),
+  locked_until TEXT,
+  last_failed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_pairing_attempts_locked_until ON pairing_attempts(locked_until);
+
 CREATE TABLE IF NOT EXISTS instances (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

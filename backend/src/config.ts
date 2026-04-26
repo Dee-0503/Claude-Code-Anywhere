@@ -1,3 +1,4 @@
+import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 export type TlsMode = "off";
@@ -15,6 +16,9 @@ export interface AppConfig {
   readonly heartbeatTimeoutMs: number;
   readonly websocketPath: string;
   readonly websocketAllowedOrigins: readonly string[];
+  readonly instanceAllowedWorkspaceRoots: readonly string[];
+  readonly instanceMaxActivePerDevice: number;
+  readonly instanceMaxActiveGlobal: number;
 }
 
 export interface ConfigEnvironment {
@@ -33,6 +37,9 @@ const DEFAULT_CONFIG: AppConfig = {
   heartbeatTimeoutMs: 45_000,
   websocketPath: "/ws",
   websocketAllowedOrigins: [],
+  instanceAllowedWorkspaceRoots: [process.cwd()],
+  instanceMaxActivePerDevice: 4,
+  instanceMaxActiveGlobal: 16,
 };
 
 function readInteger(
@@ -126,6 +133,25 @@ function readWebSocketAllowedOrigins(value: string | undefined): readonly string
     .filter((origin) => origin.length > 0);
 }
 
+function readExistingDirectories(value: string | undefined, fallback: readonly string[], name: string): readonly string[] {
+  const paths = value === undefined || value.trim() === ""
+    ? fallback
+    : value.split(",").map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+  const resolvedPaths = paths.map((entry) => resolve(entry));
+
+  if (resolvedPaths.length === 0) {
+    throw new Error(`${name} must include at least one directory`);
+  }
+
+  for (const path of resolvedPaths) {
+    if (!existsSync(path) || !statSync(path).isDirectory()) {
+      throw new Error(`${name} entries must be existing directories`);
+    }
+  }
+
+  return resolvedPaths;
+}
+
 export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
   const host = env.CCA_HOST?.trim() || DEFAULT_CONFIG.host;
   const port = readInteger(env.CCA_PORT, DEFAULT_CONFIG.port, "CCA_PORT", {
@@ -167,6 +193,23 @@ export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
   );
   const websocketPath = readWebSocketPath(env.CCA_WEBSOCKET_PATH);
   const websocketAllowedOrigins = readWebSocketAllowedOrigins(env.CCA_WEBSOCKET_ALLOWED_ORIGINS);
+  const instanceAllowedWorkspaceRoots = readExistingDirectories(
+    env.CCA_INSTANCE_ALLOWED_WORKSPACE_ROOTS,
+    DEFAULT_CONFIG.instanceAllowedWorkspaceRoots,
+    "CCA_INSTANCE_ALLOWED_WORKSPACE_ROOTS",
+  );
+  const instanceMaxActivePerDevice = readInteger(
+    env.CCA_INSTANCE_MAX_ACTIVE_PER_DEVICE,
+    DEFAULT_CONFIG.instanceMaxActivePerDevice,
+    "CCA_INSTANCE_MAX_ACTIVE_PER_DEVICE",
+    { min: 1 },
+  );
+  const instanceMaxActiveGlobal = readInteger(
+    env.CCA_INSTANCE_MAX_ACTIVE_GLOBAL,
+    DEFAULT_CONFIG.instanceMaxActiveGlobal,
+    "CCA_INSTANCE_MAX_ACTIVE_GLOBAL",
+    { min: 1 },
+  );
 
   return {
     host,
@@ -180,6 +223,9 @@ export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
     heartbeatTimeoutMs,
     websocketPath,
     websocketAllowedOrigins,
+    instanceAllowedWorkspaceRoots,
+    instanceMaxActivePerDevice,
+    instanceMaxActiveGlobal,
   };
 }
 

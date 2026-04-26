@@ -49,7 +49,12 @@ export function createRuntimeServices(appConfig: AppConfig = config): RuntimeSer
     pairings: pairingRepository,
   });
   const admin = createAdminService({ auth, devices: deviceRepository });
-  const instances = createInstanceService({ repository: instanceRepository });
+  const instances = createInstanceService({
+    repository: instanceRepository,
+    allowedWorkspaceRoots: appConfig.instanceAllowedWorkspaceRoots,
+    maxActiveInstancesPerDevice: appConfig.instanceMaxActivePerDevice,
+    maxActiveInstancesGlobal: appConfig.instanceMaxActiveGlobal,
+  });
   const notifications = createNotificationService({ notifications: notificationRepository });
 
   return {

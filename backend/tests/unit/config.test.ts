@@ -1,3 +1,7 @@
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { loadConfig } from "../../src/config.js";
@@ -32,5 +36,43 @@ describe("loadConfig TLS production guidance", () => {
     expect(() => loadConfig({
       CCA_TLS_CERT_PATH: "certs/local.crt",
     })).toThrow("CCA_TLS_CERT_PATH is not supported; terminate TLS at a trusted reverse proxy");
+  });
+});
+
+describe("loadConfig instance hardening", () => {
+  it("loads configured workspace roots and active instance limits", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "cca-config-"));
+    const workspaceA = join(tempDir, "workspace-a");
+    const workspaceB = join(tempDir, "workspace-b");
+    mkdirSync(workspaceA);
+    mkdirSync(workspaceB);
+
+    try {
+      const config = loadConfig({
+        CCA_INSTANCE_ALLOWED_WORKSPACE_ROOTS: `${workspaceA}, ${workspaceB}`,
+        CCA_INSTANCE_MAX_ACTIVE_PER_DEVICE: "3",
+        CCA_INSTANCE_MAX_ACTIVE_GLOBAL: "9",
+      });
+
+      expect(config.instanceAllowedWorkspaceRoots).toEqual([workspaceA, workspaceB]);
+      expect(config.instanceMaxActivePerDevice).toBe(3);
+      expect(config.instanceMaxActiveGlobal).toBe(9);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects invalid instance hardening configuration", () => {
+    expect(() => loadConfig({
+      CCA_INSTANCE_ALLOWED_WORKSPACE_ROOTS: "/path/that/does/not/exist",
+    })).toThrow("CCA_INSTANCE_ALLOWED_WORKSPACE_ROOTS entries must be existing directories");
+
+    expect(() => loadConfig({
+      CCA_INSTANCE_MAX_ACTIVE_PER_DEVICE: "0",
+    })).toThrow("CCA_INSTANCE_MAX_ACTIVE_PER_DEVICE must be >= 1");
+
+    expect(() => loadConfig({
+      CCA_INSTANCE_MAX_ACTIVE_GLOBAL: "0",
+    })).toThrow("CCA_INSTANCE_MAX_ACTIVE_GLOBAL must be >= 1");
   });
 });

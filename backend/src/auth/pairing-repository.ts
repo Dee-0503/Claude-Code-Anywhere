@@ -2,12 +2,29 @@ import type { DeviceId, PairingCode, PairingCodeId } from "../../../shared/proto
 import type { SqliteDatabase } from "../db/connection.js";
 import { verifyToken } from "./tokens.js";
 
+export interface PairingAttemptState {
+  readonly key: string;
+  readonly failedAttempts: number;
+  readonly lockedUntil: string | null;
+  readonly lastFailedAt: string | null;
+}
+
+export interface RecordFailedPairingAttemptInput {
+  readonly key: string;
+  readonly failedAt: Date;
+  readonly maxFailedAttempts: number;
+  readonly cooldownMs: number;
+}
+
 export interface PairingRepository {
   create(pairing: PairingCode): PairingCode;
   findByCode(code: string): Promise<PairingCode | undefined>;
   activeBootstrap(now: Date): PairingCode | undefined;
   markUsed(pairingId: PairingCodeId, usedByDeviceId: DeviceId, usedAt: string): PairingCode | undefined;
   claim(pairingId: PairingCodeId, usedByDeviceId: DeviceId, usedAt: string, now: Date): PairingCode | undefined;
+  getAttemptState(key: string): PairingAttemptState | undefined;
+  recordFailedAttempt(input: RecordFailedPairingAttemptInput): PairingAttemptState;
+  clearAttemptState(key: string): void;
 }
 
 interface PairingRow {
@@ -30,9 +47,39 @@ function mapPairing(row: PairingRow): PairingCode {
   };
 }
 
+interface PairingAttemptRow {
+  key: string;
+  failed_attempts: number;
+  locked_until: string | null;
+  last_failed_at: string | null;
+}
+
+function mapAttempt(row: PairingAttemptRow): PairingAttemptState {
+  return {
+    key: row.key,
+    failedAttempts: row.failed_attempts,
+    lockedUntil: row.locked_until,
+    lastFailedAt: row.last_failed_at,
+  };
+}
+
+function calculateFailedAttempt(input: RecordFailedPairingAttemptInput, current?: PairingAttemptState): PairingAttemptState {
+  const failedAttempts = (current?.failedAttempts ?? 0) + 1;
+  const lockedUntil = failedAttempts >= input.maxFailedAttempts
+    ? new Date(input.failedAt.getTime() + input.cooldownMs).toISOString()
+    : null;
+  return {
+    key: input.key,
+    failedAttempts,
+    lockedUntil,
+    lastFailedAt: input.failedAt.toISOString(),
+  };
+}
+
 export function createSqlitePairingRepository(database: SqliteDatabase): PairingRepository {
   const selectAll = database.prepare("SELECT * FROM pairing_codes ORDER BY expires_at, id");
   const selectById = database.prepare("SELECT * FROM pairing_codes WHERE id = ?");
+  const selectAttempt = database.prepare("SELECT * FROM pairing_attempts WHERE key = ?");
 
   return {
     create(pairing) {
@@ -76,11 +123,31 @@ export function createSqlitePairingRepository(database: SqliteDatabase): Pairing
       const row = selectById.get(pairingId) as PairingRow | undefined;
       return row === undefined ? undefined : mapPairing(row);
     },
+    getAttemptState(key) {
+      const row = selectAttempt.get(key) as PairingAttemptRow | undefined;
+      return row === undefined ? undefined : mapAttempt(row);
+    },
+    recordFailedAttempt(input) {
+      const state = calculateFailedAttempt(input, this.getAttemptState(input.key));
+      database.prepare(`
+        INSERT INTO pairing_attempts (key, failed_attempts, locked_until, last_failed_at)
+        VALUES (@key, @failedAttempts, @lockedUntil, @lastFailedAt)
+        ON CONFLICT(key) DO UPDATE SET
+          failed_attempts = excluded.failed_attempts,
+          locked_until = excluded.locked_until,
+          last_failed_at = excluded.last_failed_at
+      `).run(state);
+      return state;
+    },
+    clearAttemptState(key) {
+      database.prepare("DELETE FROM pairing_attempts WHERE key = ?").run(key);
+    },
   };
 }
 
 export function createInMemoryPairingRepository(): PairingRepository {
   const pairings = new Map<PairingCodeId, PairingCode>();
+  const attempts = new Map<string, PairingAttemptState>();
 
   return {
     create(pairing) {
@@ -122,6 +189,17 @@ export function createInMemoryPairingRepository(): PairingRepository {
       const updated = { ...pairing, usedAt, usedByDeviceId };
       pairings.set(pairingId, updated);
       return updated;
+    },
+    getAttemptState(key) {
+      return attempts.get(key);
+    },
+    recordFailedAttempt(input) {
+      const state = calculateFailedAttempt(input, attempts.get(input.key));
+      attempts.set(input.key, state);
+      return state;
+    },
+    clearAttemptState(key) {
+      attempts.delete(key);
     },
   };
 }

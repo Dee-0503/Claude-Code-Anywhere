@@ -69,6 +69,12 @@ describe("SQLite repository persistence", () => {
         usedAt: null,
         usedByDeviceId: null,
       });
+      pairings.recordFailedAttempt({
+        key: "pairing-consume",
+        failedAt: new Date("2026-04-26T00:00:30.000Z"),
+        maxFailedAttempts: 1,
+        cooldownMs: 60_000,
+      });
       const instance = instances.create({
         cwd: "/workspace/project",
         createdByDeviceId: "device-1",
@@ -124,6 +130,12 @@ describe("SQLite repository persistence", () => {
         id: "pairing-1",
         createdByDeviceId: "device-1",
         usedAt: null,
+      });
+      expect(pairings.getAttemptState("pairing-consume")).toEqual({
+        key: "pairing-consume",
+        failedAttempts: 1,
+        lockedUntil: "2026-04-26T00:01:30.000Z",
+        lastFailedAt: "2026-04-26T00:00:30.000Z",
       });
       expect(instances.list()).toEqual([
         expect.objectContaining({
