@@ -44,6 +44,12 @@ export const CLAUDE_INSTANCE_STATUSES = {
 export type ClaudeInstanceStatus =
   (typeof CLAUDE_INSTANCE_STATUSES)[keyof typeof CLAUDE_INSTANCE_STATUSES];
 
+export interface ClaudeInstanceTeamMetadata {
+  teamId: string;
+  teammateId: string;
+  teammateName: string;
+}
+
 export interface ClaudeInstance {
   id: ClaudeInstanceId;
   name: string;
@@ -51,6 +57,7 @@ export interface ClaudeInstance {
   ptyPid: number | null;
   cwd: string;
   createdByDeviceId: DeviceId;
+  teamMetadata: ClaudeInstanceTeamMetadata | null;
   createdAt: ISODateTimeString;
   lastActiveAt: ISODateTimeString | null;
   exitedAt: ISODateTimeString | null;

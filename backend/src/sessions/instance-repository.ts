@@ -27,6 +27,7 @@ export function createInMemoryInstanceRepository(): InstanceRepository {
         ptyPid: input.ptyPid ?? null,
         cwd: input.cwd,
         createdByDeviceId: input.createdByDeviceId,
+        teamMetadata: null,
         createdAt: timestamp,
         lastActiveAt: timestamp,
         exitedAt: null,
