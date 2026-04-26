@@ -4,6 +4,10 @@ export interface TerminalOutputWriter {
   write(data: string): void;
 }
 
+export interface TerminalOutputScroller {
+  scrollToLine(line: number): void;
+}
+
 export interface TerminalOutputState {
   readonly text: string;
   readonly scrollOffset: number;
@@ -28,4 +32,15 @@ export function appendTerminalOutput(
     text: trimmedText,
     scrollOffset: nextText.length - trimmedText.length,
   };
+}
+
+export function scrollTerminalOutput(state: TerminalOutputState, scroller: TerminalOutputScroller | null, outputOffset: number): void {
+  if (outputOffset < state.scrollOffset) {
+    scroller?.scrollToLine(0);
+    return;
+  }
+
+  const visibleOffset = outputOffset - state.scrollOffset;
+  const line = state.text.slice(0, visibleOffset).split("\n").length - 1;
+  scroller?.scrollToLine(line);
 }

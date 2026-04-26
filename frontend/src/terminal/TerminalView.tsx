@@ -7,7 +7,7 @@ import type { ClaudeInstanceId, DeviceId, InputMessageId } from "../../../shared
 import { ConnectionStatus, type DisplayConnectionState } from "../components/ConnectionStatus.js";
 import { OfflineInputConfirm } from "../components/OfflineInputConfirm.js";
 import { TerminalSearch } from "../components/TerminalSearch.js";
-import { appendTerminalOutput, type TerminalOutputState } from "./outputRenderer.js";
+import { appendTerminalOutput, scrollTerminalOutput, type TerminalOutputState } from "./outputRenderer.js";
 import { calculateTerminalScale } from "./scaling.js";
 import type { ProtocolClient, ProtocolClientStatus } from "../protocol/client.js";
 import type { DeviceCredentials } from "../protocol/device-credentials.js";
@@ -159,12 +159,16 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
     setPendingInputs(inputClientRef.current?.pending() ?? []);
   }
 
+  function handleSearchMatch(_index: number, _total: number, offset: number): void {
+    scrollTerminalOutput(outputStateRef.current, terminalRef.current, offset);
+  }
+
   return (
     <section aria-label="远程终端">
       <p>连接状态：{status}</p>
       <ConnectionStatus state={connectionState} />
       <OfflineInputConfirm pendingInputs={pendingInputs} onConfirm={handleConfirmOfflineInput} />
-      <TerminalSearch output={terminalOutput} />
+      <TerminalSearch output={terminalOutput} onMatchChange={handleSearchMatch} />
       <p>{notice}</p>
       <div
         ref={containerRef}
