@@ -54,12 +54,22 @@ describe("instance API contract", () => {
       access_token: device.access_token,
       name: "main",
       cwd: "/Users/ceemac/my_product/Claude Code Anywhere",
+      team_metadata: {
+        team_id: "team-1",
+        teammate_id: "lead",
+        teammate_name: "Lead",
+      },
     });
 
     expect(created).toMatchObject({
       id: expect.any(String),
       name: "main",
       status: CLAUDE_INSTANCE_STATUSES.RUNNING,
+      team_metadata: {
+        team_id: "team-1",
+        teammate_id: "lead",
+        teammate_name: "Lead",
+      },
     });
     await expect(api.listInstances({
       device_id: device.device_id,
@@ -71,6 +81,11 @@ describe("instance API contract", () => {
           name: "main",
           status: CLAUDE_INSTANCE_STATUSES.RUNNING,
           last_active_at: "2026-04-25T12:00:00.000Z",
+          team_metadata: {
+            team_id: "team-1",
+            teammate_id: "lead",
+            teammate_name: "Lead",
+          },
         },
       ],
     });

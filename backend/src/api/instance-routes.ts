@@ -1,4 +1,4 @@
-import type { CLAUDE_INSTANCE_STATUSES, ClaudeInstanceId } from "../../../shared/protocol/domain.js";
+import type { CLAUDE_INSTANCE_STATUSES, ClaudeInstance, ClaudeInstanceId, ClaudeInstanceTeamMetadata } from "../../../shared/protocol/domain.js";
 import { PROTOCOL_ERROR_CODES } from "../../../shared/protocol/errors.js";
 import type { BootstrapPairingService } from "../auth/pairing-service.js";
 import { createApiError } from "./errors.js";
@@ -17,6 +17,11 @@ export interface AuthenticatedInstanceRequest {
 export interface CreateInstanceRequest extends AuthenticatedInstanceRequest {
   readonly name: string;
   readonly cwd: string;
+  readonly team_metadata?: {
+    readonly team_id: string;
+    readonly teammate_id: string;
+    readonly teammate_name: string;
+  };
 }
 
 export interface InstanceStatusRequest extends AuthenticatedInstanceRequest {
@@ -24,6 +29,34 @@ export interface InstanceStatusRequest extends AuthenticatedInstanceRequest {
 }
 
 export function createInstanceApi(options: InstanceApiOptions) {
+  function toTeamMetadata(input: CreateInstanceRequest["team_metadata"]): ClaudeInstanceTeamMetadata | null {
+    if (input === undefined) {
+      return null;
+    }
+
+    return {
+      teamId: input.team_id,
+      teammateId: input.teammate_id,
+      teammateName: input.teammate_name,
+    };
+  }
+
+  function serializeInstance(instance: ClaudeInstance) {
+    return {
+      id: instance.id,
+      name: instance.name,
+      status: instance.status,
+      last_active_at: instance.lastActiveAt,
+      team_metadata: instance.teamMetadata === null
+        ? null
+        : {
+          team_id: instance.teamMetadata.teamId,
+          teammate_id: instance.teamMetadata.teammateId,
+          teammate_name: instance.teamMetadata.teammateName,
+        },
+    };
+  }
+
   function instanceNotFound(instanceId: ClaudeInstanceId) {
     return createApiError(PROTOCOL_ERROR_CODES.INSTANCE_UNAVAILABLE, "Instance not found", {
       statusCode: 404,
@@ -42,12 +75,7 @@ export function createInstanceApi(options: InstanceApiOptions) {
     async listInstances(input: AuthenticatedInstanceRequest) {
       await authenticate(input);
       return {
-        instances: options.instances.repository.list().map((instance) => ({
-          id: instance.id,
-          name: instance.name,
-          status: instance.status,
-          last_active_at: instance.lastActiveAt,
-        })),
+        instances: options.instances.repository.list().map(serializeInstance),
       };
     },
     async createInstance(input: CreateInstanceRequest) {
@@ -56,12 +84,9 @@ export function createInstanceApi(options: InstanceApiOptions) {
         cwd: input.cwd,
         name: input.name,
         createdByDeviceId: device.id,
+        teamMetadata: toTeamMetadata(input.team_metadata),
       });
-      return {
-        id: instance.id,
-        name: instance.name,
-        status: instance.status,
-      };
+      return serializeInstance(instance);
     },
     async getInstanceStatus(input: InstanceStatusRequest) {
       await authenticate(input);

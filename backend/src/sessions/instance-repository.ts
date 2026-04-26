@@ -4,11 +4,12 @@ import {
   CLAUDE_INSTANCE_STATUSES,
   type ClaudeInstance,
   type ClaudeInstanceId,
+  type ClaudeInstanceTeamMetadata,
   type DeviceId,
 } from "../../../shared/protocol/domain.js";
 
 export interface InstanceRepository {
-  create(input: { cwd: string; createdByDeviceId: DeviceId; name?: string; ptyPid?: number | null; now?: Date }): ClaudeInstance;
+  create(input: { cwd: string; createdByDeviceId: DeviceId; name?: string; ptyPid?: number | null; teamMetadata?: ClaudeInstanceTeamMetadata | null; now?: Date }): ClaudeInstance;
   get(instanceId: ClaudeInstanceId): ClaudeInstance | undefined;
   update(instance: ClaudeInstance): ClaudeInstance;
   list(): ClaudeInstance[];
@@ -27,7 +28,7 @@ export function createInMemoryInstanceRepository(): InstanceRepository {
         ptyPid: input.ptyPid ?? null,
         cwd: input.cwd,
         createdByDeviceId: input.createdByDeviceId,
-        teamMetadata: null,
+        teamMetadata: input.teamMetadata ?? null,
         createdAt: timestamp,
         lastActiveAt: timestamp,
         exitedAt: null,

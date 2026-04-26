@@ -1,4 +1,4 @@
-import type { ClaudeInstance, ClaudeInstanceId, DeviceId } from "../../../shared/protocol/domain.js";
+import type { ClaudeInstance, ClaudeInstanceId, ClaudeInstanceTeamMetadata, DeviceId } from "../../../shared/protocol/domain.js";
 import type { PtyAdapter, PtyProcess } from "../pty/pty-adapter.js";
 import { createInMemoryInstanceRepository, type InstanceRepository } from "./instance-repository.js";
 
@@ -18,7 +18,7 @@ export function createInstanceService(options: InstanceServiceOptions = {}) {
   const processes = new Map<ClaudeInstanceId, PtyProcess>();
   const now = options.now ?? (() => new Date());
 
-  function startInstance(input: { cwd: string; createdByDeviceId: DeviceId; instanceId?: ClaudeInstanceId; name?: string }): StartedInstance {
+  function startInstance(input: { cwd: string; createdByDeviceId: DeviceId; instanceId?: ClaudeInstanceId; name?: string; teamMetadata?: ClaudeInstanceTeamMetadata | null }): StartedInstance {
     if (input.instanceId !== undefined) {
       const existing = repository.get(input.instanceId);
       if (existing !== undefined) {
@@ -36,6 +36,7 @@ export function createInstanceService(options: InstanceServiceOptions = {}) {
       cwd: input.cwd,
       createdByDeviceId: input.createdByDeviceId,
       ptyPid: process?.pid ?? null,
+      teamMetadata: input.teamMetadata ?? null,
       now: now(),
     });
     if (process !== null) {

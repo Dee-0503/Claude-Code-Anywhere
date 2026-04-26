@@ -10,6 +10,7 @@ import {
 import { PairingPage } from "./PairingPage.js";
 import { TerminalView } from "../terminal/TerminalView.js";
 import { TeamWorkspace } from "../components/TeamWorkspace.js";
+import type { TeamWorkspaceTeammate } from "../components/TeamWorkspace.js";
 
 type RouteName = "home" | "pairing" | "terminal";
 
@@ -35,6 +36,64 @@ function createTerminalPath(instanceId: string): string {
   return instanceId === DEFAULT_INSTANCE_ID ? "/terminal" : `/terminal?instance=${encodeURIComponent(instanceId)}`;
 }
 
+export interface InstanceSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly status: string;
+  readonly last_active_at: string | null;
+  readonly team_metadata: {
+    readonly team_id: string;
+    readonly teammate_id: string;
+    readonly teammate_name: string;
+  } | null;
+}
+
+export interface TerminalRouteModel {
+  readonly activeInstanceId: string;
+  readonly teammates: readonly TeamWorkspaceTeammate[];
+  createTerminalPath(instanceId: string): string;
+}
+
+export interface InstanceListResponse {
+  readonly instances: InstanceSummary[];
+}
+
+export async function fetchInstanceSummaries(credentials: DeviceCredentials): Promise<InstanceSummary[]> {
+  const url = new URL("/api/instances", window.location.origin);
+  url.searchParams.set("device_id", credentials.device_id);
+  url.searchParams.set("access_token", credentials.access_token);
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Instance list failed with HTTP ${response.status}`);
+  }
+
+  return ((await response.json()) as InstanceListResponse).instances;
+}
+
+export function createTerminalRouteModel(
+  instances: readonly InstanceSummary[],
+  activeInstanceId: string,
+): TerminalRouteModel {
+  const teamId = instances.find((instance) => instance.id === activeInstanceId)?.team_metadata?.team_id;
+  const visibleInstances = teamId === undefined
+    ? instances
+    : instances.filter((instance) => instance.team_metadata?.team_id === teamId);
+  const teammates = visibleInstances.map((instance) => ({
+    instanceId: instance.id,
+    teammateName: instance.team_metadata?.teammate_name ?? instance.name,
+    instanceName: instance.name,
+  }));
+
+  return {
+    activeInstanceId,
+    teammates: teammates.length > 0
+      ? teammates
+      : [{ instanceId: activeInstanceId, teammateName: "当前", instanceName: activeInstanceId }],
+    createTerminalPath,
+  };
+}
+
 function resolveRoute(pathname: string): AppRoute {
   return ROUTES.find((route) => route.path === pathname) ?? ROUTES[0]!;
 }
@@ -44,12 +103,35 @@ export default function App(): ReactElement {
   const [connectionStatus, setConnectionStatus] = useState<ProtocolClientStatus>("idle");
   const [credentials, setCredentials] = useState<DeviceCredentials | null>(() => loadDeviceCredentials());
   const [activeInstanceId, setActiveInstanceId] = useState(() => resolveInstanceIdFromLocation(new URL(window.location.href)));
+  const [instances, setInstances] = useState<InstanceSummary[]>([]);
   const protocolClient = useMemo(
     () => new ProtocolClient({ url: `${window.location.origin.replace(/^http/, "ws")}/ws` }),
     [],
   );
 
   useEffect(() => protocolClient.on("status", setConnectionStatus), [protocolClient]);
+
+  useEffect(() => {
+    if (credentials === null) {
+      setInstances([]);
+      return;
+    }
+
+    let cancelled = false;
+    void fetchInstanceSummaries(credentials).then((nextInstances) => {
+      if (!cancelled) {
+        setInstances(nextInstances);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setInstances([]);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [credentials]);
 
   useEffect(() => {
     function handlePopState(): void {
@@ -101,7 +183,7 @@ export default function App(): ReactElement {
 
       <section aria-labelledby="route-title">
         <h2 id="route-title">{route.label}</h2>
-        {renderRoute(route.name, protocolClient, credentials, handlePaired, activeInstanceId, handleSelectInstance)}
+        {renderRoute(route.name, protocolClient, credentials, handlePaired, createTerminalRouteModel(instances, activeInstanceId), handleSelectInstance)}
       </section>
 
       <footer>
@@ -118,7 +200,7 @@ function renderRoute(
   protocolClient: ProtocolClient,
   credentials: DeviceCredentials | null,
   onPaired: (credentials: DeviceCredentials) => void,
-  activeInstanceId: string,
+  terminalRoute: TerminalRouteModel,
   onSelectInstance: (instanceId: string) => void,
 ): ReactElement {
   switch (routeName) {
@@ -128,11 +210,11 @@ function renderRoute(
       return (
         <>
           <TeamWorkspace
-            activeInstanceId={activeInstanceId}
-            teammates={[{ instanceId: activeInstanceId, teammateName: "当前", instanceName: activeInstanceId }]}
+            activeInstanceId={terminalRoute.activeInstanceId}
+            teammates={terminalRoute.teammates}
             onSelect={onSelectInstance}
           />
-          <TerminalView client={protocolClient} credentials={credentials} instanceId={activeInstanceId} />
+          <TerminalView client={protocolClient} credentials={credentials} instanceId={terminalRoute.activeInstanceId} />
         </>
       );
     case "home":
