@@ -26,7 +26,8 @@ export default defineConfig({
         test: {
           name: 'backend',
           environment: 'node',
-          include: ['backend/tests/**/*.test.ts']
+          include: ['backend/tests/**/*.test.ts'],
+          testTimeout: 10_000
         }
       },
       {

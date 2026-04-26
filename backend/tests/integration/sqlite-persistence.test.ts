@@ -133,7 +133,11 @@ describe('SQLite repository persistence', () => {
         role: DEVICE_ROLES.ADMIN,
         revokedAt: null
       });
-      expect(devices.hasActiveAdmin()).toBe(true);
+      devices.revoke('device-1', '2026-04-26T00:08:00.000Z');
+      await expect(devices.verifyToken('device-1', issuedToken)).resolves.toBeUndefined();
+      expect(devices.hasActiveAdmin()).toBe(false);
+      devices.updateRole('device-1', DEVICE_ROLES.ADMIN);
+      expect(devices.hasActiveAdmin()).toBe(false);
       await expect(pairings.findByCode(pairingCode)).resolves.toMatchObject({
         id: 'pairing-1',
         createdByDeviceId: 'device-1',

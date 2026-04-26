@@ -293,4 +293,20 @@ describe('auth security', () => {
     await expect(devices.verifyToken('alpha', alphaHash)).resolves.toBeUndefined();
     await expect(verifyToken(alphaToken, alphaHash)).resolves.toBe(true);
   });
+
+  it('rejects revoked device tokens at the repository boundary', async () => {
+    const devices = createInMemoryDeviceRepository();
+    const accessToken = 'revoked-token-00000000000000';
+    devices.create({
+      id: 'revoked-device',
+      name: 'Revoked',
+      role: DEVICE_ROLES.MEMBER,
+      tokenHash: await hashToken(accessToken),
+      createdAt: NOW.toISOString(),
+      lastSeenAt: NOW.toISOString(),
+      revokedAt: NOW.toISOString()
+    });
+
+    await expect(devices.verifyToken('revoked-device', accessToken)).resolves.toBeUndefined();
+  });
 });

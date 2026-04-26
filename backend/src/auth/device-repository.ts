@@ -84,7 +84,7 @@ export function createSqliteDeviceRepository(database: SqliteDatabase): DeviceRe
     },
     async verifyToken(deviceId, accessToken) {
       const device = this.getById(deviceId);
-      if (device === undefined) return undefined;
+      if (device === undefined || device.revokedAt !== null) return undefined;
       return (await verifyToken(accessToken, device.tokenHash)) ? device : undefined;
     }
   };
@@ -137,7 +137,7 @@ export function createInMemoryDeviceRepository(): DeviceRepository {
     },
     async verifyToken(deviceId, accessToken) {
       const device = devices.get(deviceId);
-      if (device === undefined) return undefined;
+      if (device === undefined || device.revokedAt !== null) return undefined;
       return (await verifyToken(accessToken, device.tokenHash)) ? device : undefined;
     }
   };
