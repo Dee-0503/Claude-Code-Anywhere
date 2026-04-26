@@ -1,10 +1,11 @@
 import type { InputMessageId } from "../../../shared/protocol/domain.js";
-import { SERVER_MESSAGE_TYPES, type InputAckMessagePayload, type ServerToClientMessage } from "../../../shared/protocol/messages.js";
+import { INPUT_ACK_STATUSES, SERVER_MESSAGE_TYPES, type InputAckMessagePayload, type ServerToClientMessage } from "../../../shared/protocol/messages.js";
 
 export interface PendingInput {
   readonly inputId: InputMessageId;
   readonly payload: string;
   readonly sent: boolean;
+  readonly awaitingConfirmation: boolean;
 }
 
 export interface InputTransport {
@@ -33,7 +34,7 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
     });
     pendingInputs.set(input.inputId, { ...input, sent: true });
     window.setTimeout(() => {
-      if (pendingInputs.has(input.inputId) && online) {
+      if (pendingInputs.has(input.inputId) && online && !pendingInputs.get(input.inputId)!.awaitingConfirmation) {
         transmit(pendingInputs.get(input.inputId)!);
       }
     }, retryAfterMs);
@@ -44,6 +45,7 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
       inputId: createInputId(),
       payload,
       sent: false,
+      awaitingConfirmation: false,
     };
     pendingInputs.set(input.inputId, input);
     if (online) {
@@ -60,6 +62,13 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
   }
 
   function handleAck(message: InputAckMessagePayload): void {
+    if (message.status === INPUT_ACK_STATUSES.PENDING_CONFIRMATION) {
+      const input = pendingInputs.get(message.input_id);
+      if (input !== undefined) {
+        pendingInputs.set(message.input_id, { ...input, awaitingConfirmation: true });
+      }
+      return;
+    }
     pendingInputs.delete(message.input_id);
   }
 
