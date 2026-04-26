@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CLIENT_MESSAGE_TYPES } from "../../../shared/protocol/messages.js";
+import { CLIENT_MESSAGE_TYPES, SERVER_MESSAGE_TYPES } from "../../../shared/protocol/messages.js";
 import { createRemoteTerminalSessionHarness } from "../../src/sessions/remote-terminal-session.js";
 
 describe("multi-client input coordination", () => {
@@ -40,11 +40,47 @@ describe("multi-client input coordination", () => {
       expect.objectContaining({ deviceId: member.device_id }),
     ]);
 
+    expect(first.messages).toContainEqual(expect.objectContaining({
+      type: SERVER_MESSAGE_TYPES.PRESENCE,
+      instance_id: first.firstMessage.instance_id,
+      devices: expect.arrayContaining([
+        expect.objectContaining({ device_id: admin.device_id }),
+        expect.objectContaining({ device_id: member.device_id }),
+      ]),
+    }));
+    expect(second.messages).toContainEqual(expect.objectContaining({
+      type: SERVER_MESSAGE_TYPES.PRESENCE,
+      instance_id: first.firstMessage.instance_id,
+      devices: expect.arrayContaining([
+        expect.objectContaining({ device_id: admin.device_id }),
+        expect.objectContaining({ device_id: member.device_id }),
+      ]),
+    }));
+
     await first.queueDisconnectedInput({ input_id: "mac-queued", payload: "npm test\n" });
     await second.queueDisconnectedInput({ input_id: "phone-queued", payload: "git status\n" });
+    expect(second.messages).toContainEqual(expect.objectContaining({
+      type: SERVER_MESSAGE_TYPES.QUEUED_INPUTS,
+      instance_id: first.firstMessage.instance_id,
+      inputs: [
+        expect.objectContaining({ input_id: "mac-queued", device_id: admin.device_id, status: "queued" }),
+        expect.objectContaining({ input_id: "phone-queued", device_id: member.device_id, status: "queued" }),
+      ],
+    }));
     expect(second.queuedInputs().map((message) => message.id)).toEqual(["mac-queued", "phone-queued"]);
 
-    expect(second.cancelQueuedInput("phone-queued")?.status).toBe("cancelled");
+    await second.send({
+      type: CLIENT_MESSAGE_TYPES.CANCEL_INPUT,
+      instance_id: first.firstMessage.instance_id,
+      input_id: "phone-queued",
+    });
+    expect(first.messages).toContainEqual(expect.objectContaining({
+      type: SERVER_MESSAGE_TYPES.QUEUED_INPUTS,
+      instance_id: first.firstMessage.instance_id,
+      inputs: [
+        expect.objectContaining({ input_id: "mac-queued", status: "queued" }),
+      ],
+    }));
     await first.confirmPendingInput(["mac-queued", "phone-queued"]);
     expect(harness.pty.inputs(first.firstMessage.instance_id)).toEqual(["npm test\n"]);
 
@@ -58,5 +94,27 @@ describe("multi-client input coordination", () => {
       expect.objectContaining({ inputId: "interrupt-1", deviceId: member.device_id }),
     ]);
     expect(harness.pty.inputs(first.firstMessage.instance_id)).toEqual(["npm test\n"]);
+
+    await first.send({
+      type: CLIENT_MESSAGE_TYPES.CONFIRM_INTERRUPT,
+      instance_id: first.firstMessage.instance_id,
+      input_id: "interrupt-1",
+    });
+    expect(harness.pty.inputs(first.firstMessage.instance_id)).toEqual(["npm test\n", ""]);
+    expect(first.interruptConfirmations()).toEqual([]);
+
+    await second.send({
+      type: CLIENT_MESSAGE_TYPES.INPUT,
+      instance_id: first.firstMessage.instance_id,
+      input_id: "interrupt-2",
+      payload: "",
+    });
+    await first.send({
+      type: CLIENT_MESSAGE_TYPES.CANCEL_INTERRUPT,
+      instance_id: first.firstMessage.instance_id,
+      input_id: "interrupt-2",
+    });
+    expect(harness.pty.inputs(first.firstMessage.instance_id)).toEqual(["npm test\n", ""]);
+    expect(first.interruptConfirmations()).toEqual([]);
   });
 });

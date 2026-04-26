@@ -37,13 +37,16 @@ describe("multi-client input queue", () => {
   it("classifies Ctrl+C input as an interrupt requiring explicit confirmation", () => {
     const queue = createInputQueue({ now: () => new Date("2026-04-25T12:00:00.000Z") });
 
-    expect(queue.enqueue({
+    const result = queue.enqueue({
       id: "interrupt-1",
       instanceId: "instance-id",
       deviceId: "phone",
       payload: "",
-    }).status).toBe(INPUT_ACK_STATUSES.REJECTED);
-    expect(queue.listQueuedInputs("instance-id")).toEqual([]);
+    });
+
+    expect(result.status).toBe(INPUT_ACK_STATUSES.REJECTED);
+    expect(result.message.status).toBe("queued");
+    expect(queue.listQueuedInputs("instance-id").map((message) => message.id)).toEqual(["interrupt-1"]);
     expect(queue.classify("")).toBe("interrupt");
     expect(queue.classify("npm test\n")).toBe("text");
   });

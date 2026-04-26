@@ -40,7 +40,6 @@ export function createInputQueue(options: InputQueueOptions = {}) {
         payload: input.payload,
         now: now(),
       });
-      repository.updateStatus(input.instanceId, input.id, "cancelled", now());
       return { status: INPUT_ACK_STATUSES.REJECTED, message };
     }
 

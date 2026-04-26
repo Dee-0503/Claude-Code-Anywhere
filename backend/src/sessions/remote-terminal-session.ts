@@ -80,7 +80,47 @@ function createHarnessSessionService(
     options.now === undefined ? {} : { now: options.now },
   );
   const presence = createPresenceService();
+  const connectionsByInstance = new Map<string, Array<{
+    readonly connectionId: string;
+    readonly deviceId: string;
+    readonly messages: ServerToClientMessage[];
+  }>>();
   const interruptConfirmationsByInstance = new Map<string, Array<{ inputId: string; deviceId: string }>>();
+
+  function connectionMessages(instanceId: string) {
+    return connectionsByInstance.get(instanceId) ?? [];
+  }
+
+  function broadcast(instanceId: string, message: ServerToClientMessage): void {
+    for (const connection of connectionMessages(instanceId)) {
+      connection.messages.push(message);
+    }
+  }
+
+  function broadcastPresence(instanceId: string): void {
+    broadcast(instanceId, {
+      type: SERVER_MESSAGE_TYPES.PRESENCE,
+      instance_id: instanceId,
+      devices: presence.list(instanceId).map((connection) => ({
+        device_id: connection.deviceId,
+        connection_id: connection.connectionId,
+      })),
+    });
+  }
+
+  function broadcastQueuedInputs(instanceId: string): void {
+    const inputs = inputQueue.listQueuedInputs(instanceId).map((message) => ({
+      input_id: message.id,
+      device_id: message.deviceId,
+      payload: message.payload,
+      status: message.status === "cancelled" ? "cancelled" as const : "queued" as const,
+    }));
+    broadcast(instanceId, {
+      type: SERVER_MESSAGE_TYPES.QUEUED_INPUTS,
+      instance_id: instanceId,
+      inputs,
+    });
+  }
 
   function getBuffer(instanceId: string): BoundedOutputBuffer {
     let buffer = buffers.get(instanceId);
@@ -156,6 +196,14 @@ function createHarnessSessionService(
         deviceId: input.device_id,
         instanceId,
       });
+      const connection = {
+        connectionId: firstMessage.connection_id,
+        deviceId: input.device_id,
+        messages,
+      };
+      const instanceConnections = connectionMessages(instanceId);
+      connectionsByInstance.set(instanceId, [...instanceConnections, connection]);
+      broadcastPresence(instanceId);
 
       if (!seenInstances.has(instanceId)) {
         seenInstances.add(instanceId);
@@ -214,6 +262,12 @@ function createHarnessSessionService(
               const confirmations = interruptConfirmationsByInstance.get(message.instance_id) ?? [];
               confirmations.push({ inputId: message.input_id, deviceId: input.device_id });
               interruptConfirmationsByInstance.set(message.instance_id, confirmations);
+            } else {
+              injectReadyInput({
+                instanceId: message.instance_id,
+                queue: inputQueue,
+                process: pty.process(message.instance_id),
+              });
             }
             messages.push({
               type: SERVER_MESSAGE_TYPES.INPUT_ACK,
@@ -221,11 +275,31 @@ function createHarnessSessionService(
               input_id: message.input_id,
               status: result.status,
             });
-            injectReadyInput({
-              instanceId: message.instance_id,
-              queue: inputQueue,
-              process: pty.process(message.instance_id),
-            });
+            broadcastQueuedInputs(message.instance_id);
+            return;
+          }
+          if (message.type === CLIENT_MESSAGE_TYPES.CANCEL_INPUT) {
+            if (inputQueue.cancel(message.instance_id, message.input_id) !== undefined) {
+              broadcastQueuedInputs(message.instance_id);
+            }
+            return;
+          }
+          if (message.type === CLIENT_MESSAGE_TYPES.CONFIRM_INTERRUPT) {
+            const confirmed = inputQueue.confirmPending(message.instance_id, [message.input_id]);
+            for (const inputMessage of confirmed) {
+              pty.process(message.instance_id).write(inputMessage.payload);
+            }
+            const confirmations = interruptConfirmationsByInstance.get(message.instance_id) ?? [];
+            interruptConfirmationsByInstance.set(message.instance_id, confirmations.filter((confirmation) => confirmation.inputId !== message.input_id));
+            broadcastQueuedInputs(message.instance_id);
+            return;
+          }
+          if (message.type === CLIENT_MESSAGE_TYPES.CANCEL_INTERRUPT) {
+            inputQueue.cancel(message.instance_id, message.input_id);
+            const confirmations = interruptConfirmationsByInstance.get(message.instance_id) ?? [];
+            interruptConfirmationsByInstance.set(message.instance_id, confirmations.filter((confirmation) => confirmation.inputId !== message.input_id));
+            broadcastQueuedInputs(message.instance_id);
+            return;
           }
           if (message.type === CLIENT_MESSAGE_TYPES.HEARTBEAT) {
             messages.push(connectionState.markHeartbeat(new Date(message.sent_at)));
@@ -246,7 +320,11 @@ function createHarnessSessionService(
           return inputQueue.listQueuedInputs(instanceId);
         },
         cancelQueuedInput(inputId: string) {
-          return inputQueue.cancel(instanceId, inputId);
+          const cancelled = inputQueue.cancel(instanceId, inputId);
+          if (cancelled !== undefined) {
+            broadcastQueuedInputs(instanceId);
+          }
+          return cancelled;
         },
         interruptConfirmations() {
           return [...(interruptConfirmationsByInstance.get(instanceId) ?? [])];
@@ -261,15 +339,19 @@ function createHarnessSessionService(
             deviceId: input.device_id,
             payload: inputMessage.payload,
           });
+          broadcastQueuedInputs(instanceId);
         },
         async confirmPendingInput(inputIds: readonly string[]) {
           const confirmed = inputQueue.confirmPending(instanceId, inputIds);
           for (const message of confirmed) {
             pty.process(instanceId).write(message.payload);
           }
+          broadcastQueuedInputs(instanceId);
         },
         async close() {
           presence.leave(firstMessage.connection_id);
+          connectionsByInstance.set(instanceId, connectionMessages(instanceId).filter((connection) => connection.connectionId !== firstMessage.connection_id));
+          broadcastPresence(instanceId);
           return;
         },
       };

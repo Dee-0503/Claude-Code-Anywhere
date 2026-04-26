@@ -1,6 +1,9 @@
 export const CLIENT_MESSAGE_TYPES = {
   INPUT: "input",
   ACK_OUTPUT: "ack_output",
+  CANCEL_INPUT: "cancel_input",
+  CONFIRM_INTERRUPT: "confirm_interrupt",
+  CANCEL_INTERRUPT: "cancel_interrupt",
   HEARTBEAT: "heartbeat",
 } as const;
 
@@ -46,6 +49,24 @@ export interface AckOutputMessagePayload {
   type: typeof CLIENT_MESSAGE_TYPES.ACK_OUTPUT;
   instance_id: string;
   offset: number;
+}
+
+export interface CancelInputMessagePayload {
+  type: typeof CLIENT_MESSAGE_TYPES.CANCEL_INPUT;
+  instance_id: string;
+  input_id: string;
+}
+
+export interface ConfirmInterruptMessagePayload {
+  type: typeof CLIENT_MESSAGE_TYPES.CONFIRM_INTERRUPT;
+  instance_id: string;
+  input_id: string;
+}
+
+export interface CancelInterruptMessagePayload {
+  type: typeof CLIENT_MESSAGE_TYPES.CANCEL_INTERRUPT;
+  instance_id: string;
+  input_id: string;
 }
 
 export interface HeartbeatMessagePayload {
@@ -128,6 +149,9 @@ export interface ConnectionStateMessagePayload {
 export type ClientToServerMessage =
   | InputMessagePayload
   | AckOutputMessagePayload
+  | CancelInputMessagePayload
+  | ConfirmInterruptMessagePayload
+  | CancelInterruptMessagePayload
   | HeartbeatMessagePayload;
 
 export type ServerToClientMessage =
