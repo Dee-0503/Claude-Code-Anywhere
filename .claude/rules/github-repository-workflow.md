@@ -8,7 +8,7 @@ Keep the repository safe for team-scale collaboration: small reversible commits,
 
 - `main` is protected and must always be releasable.
 - `develop` is the integration branch: it collects completed spec-kit and topic-branch work for joint testing and phase-level self-checks, but does not represent production stability.
-- Spec-kit feature branches such as `001-remote-terminal` are authoritative long-lived feature branches for their spec. Keep spec-kit implementation state on the `001-xxx` branch unless the branch is explicitly promoted or retired.
+- Spec-kit authoritative branches such as `001-remote-terminal` are long-lived branches for their spec. Keep spec-kit implementation state on the `001-xxx` branch unless the branch is explicitly promoted or retired; never delete these branches as part of routine PR merge cleanup.
 - Short-lived review branches may be created for user-story PRs, but they must preserve the spec identity in the branch name, for example `001-remote-terminal-us1`, `001-remote-terminal-us2`, or `review/001-remote-terminal-us2`.
 - Avoid generic `feature/*` branches for spec-kit work when a `001-xxx` branch already exists; they obscure the authoritative implementation line and make stacked PR history harder to audit.
 - `feature/*`, `fix/*`, `docs/*`, and other topic branches are for non-spec-kit work or work that has no active `001-xxx` branch. Branch from `develop`, keep scope to one independent feature point, fix, or documentation change, then merge back to `develop` through PR.
