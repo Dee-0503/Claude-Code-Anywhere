@@ -87,7 +87,25 @@ describe("team visualization", () => {
         },
       },
     ];
-    const routeModel = createTerminalRouteModel(instances, "lead-instance");
+    const routeModel = createTerminalRouteModel(instances, [
+      {
+        team_id: "team-1",
+        teammates: [
+          {
+            instance_id: "lead-instance",
+            instance_name: "Lead Terminal",
+            teammate_id: "lead",
+            teammate_name: "Lead",
+          },
+          {
+            instance_id: "review-instance",
+            instance_name: "Review Terminal",
+            teammate_id: "reviewer",
+            teammate_name: "Reviewer",
+          },
+        ],
+      },
+    ], "lead-instance");
 
     expect(routeModel.teammates).toEqual([
       { instanceId: "lead-instance", teammateName: "Lead", instanceName: "Lead Terminal" },
@@ -140,6 +158,7 @@ describe("team visualization", () => {
             },
           },
         ],
+        team_sessions: [],
       }));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -147,19 +166,22 @@ describe("team visualization", () => {
     await expect(fetchInstanceSummaries({
       device_id: "device-1",
       access_token: "token-1",
-    })).resolves.toEqual([
-      {
-        id: "lead-instance",
-        name: "Lead Terminal",
-        status: "running",
-        last_active_at: "2026-04-25T12:00:00.000Z",
-        team_metadata: {
-          team_id: "team-1",
-          teammate_id: "lead",
-          teammate_name: "Lead",
+    })).resolves.toEqual({
+      instances: [
+        {
+          id: "lead-instance",
+          name: "Lead Terminal",
+          status: "running",
+          last_active_at: "2026-04-25T12:00:00.000Z",
+          team_metadata: {
+            team_id: "team-1",
+            teammate_id: "lead",
+            teammate_name: "Lead",
+          },
         },
-      },
-    ]);
+      ],
+      team_sessions: [],
+    });
 
     vi.unstubAllGlobals();
   });

@@ -48,6 +48,16 @@ export interface InstanceSummary {
   } | null;
 }
 
+export interface TeamSessionSummary {
+  readonly team_id: string;
+  readonly teammates: readonly {
+    readonly instance_id: string;
+    readonly instance_name: string;
+    readonly teammate_id: string;
+    readonly teammate_name: string;
+  }[];
+}
+
 export interface TerminalRouteModel {
   readonly activeInstanceId: string;
   readonly teammates: readonly TeamWorkspaceTeammate[];
@@ -56,9 +66,10 @@ export interface TerminalRouteModel {
 
 export interface InstanceListResponse {
   readonly instances: InstanceSummary[];
+  readonly team_sessions: TeamSessionSummary[];
 }
 
-export async function fetchInstanceSummaries(credentials: DeviceCredentials): Promise<InstanceSummary[]> {
+export async function fetchInstanceSummaries(credentials: DeviceCredentials): Promise<InstanceListResponse> {
   const url = new URL("/api/instances", window.location.origin);
   url.searchParams.set("device_id", credentials.device_id);
   url.searchParams.set("access_token", credentials.access_token);
@@ -68,18 +79,20 @@ export async function fetchInstanceSummaries(credentials: DeviceCredentials): Pr
     throw new Error(`Instance list failed with HTTP ${response.status}`);
   }
 
-  return ((await response.json()) as InstanceListResponse).instances;
+  return (await response.json()) as InstanceListResponse;
 }
 
 export function createTerminalRouteModel(
   instances: readonly InstanceSummary[],
+  teamSessions: readonly TeamSessionSummary[],
   activeInstanceId: string,
 ): TerminalRouteModel {
-  const teamId = instances.find((instance) => instance.id === activeInstanceId)?.team_metadata?.team_id;
-  const visibleInstances = teamId === undefined
-    ? instances
-    : instances.filter((instance) => instance.team_metadata?.team_id === teamId);
-  const teammates = visibleInstances.map((instance) => ({
+  const currentSession = teamSessions.find((session) => session.teammates.some((teammate) => teammate.instance_id === activeInstanceId));
+  const teammates = currentSession?.teammates.map((teammate) => ({
+    instanceId: teammate.instance_id,
+    teammateName: teammate.teammate_name,
+    instanceName: teammate.instance_name,
+  })) ?? instances.map((instance) => ({
     instanceId: instance.id,
     teammateName: instance.team_metadata?.teammate_name ?? instance.name,
     instanceName: instance.name,
@@ -104,6 +117,7 @@ export default function App(): ReactElement {
   const [credentials, setCredentials] = useState<DeviceCredentials | null>(() => loadDeviceCredentials());
   const [activeInstanceId, setActiveInstanceId] = useState(() => resolveInstanceIdFromLocation(new URL(window.location.href)));
   const [instances, setInstances] = useState<InstanceSummary[]>([]);
+  const [teamSessions, setTeamSessions] = useState<TeamSessionSummary[]>([]);
   const protocolClient = useMemo(
     () => new ProtocolClient({ url: `${window.location.origin.replace(/^http/, "ws")}/ws` }),
     [],
@@ -114,17 +128,20 @@ export default function App(): ReactElement {
   useEffect(() => {
     if (credentials === null) {
       setInstances([]);
+      setTeamSessions([]);
       return;
     }
 
     let cancelled = false;
-    void fetchInstanceSummaries(credentials).then((nextInstances) => {
+    void fetchInstanceSummaries(credentials).then((instanceList) => {
       if (!cancelled) {
-        setInstances(nextInstances);
+        setInstances(instanceList.instances);
+        setTeamSessions(instanceList.team_sessions);
       }
     }).catch(() => {
       if (!cancelled) {
         setInstances([]);
+        setTeamSessions([]);
       }
     });
 
@@ -183,7 +200,7 @@ export default function App(): ReactElement {
 
       <section aria-labelledby="route-title">
         <h2 id="route-title">{route.label}</h2>
-        {renderRoute(route.name, protocolClient, credentials, handlePaired, createTerminalRouteModel(instances, activeInstanceId), handleSelectInstance)}
+        {renderRoute(route.name, protocolClient, credentials, handlePaired, createTerminalRouteModel(instances, teamSessions, activeInstanceId), handleSelectInstance)}
       </section>
 
       <footer>
