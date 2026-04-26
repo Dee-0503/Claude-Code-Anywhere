@@ -24,10 +24,30 @@ function createInputId(deviceId: DeviceId): InputMessageId {
   return `${deviceId}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
 }
 
+export function createTerminalOutputSyncScheduler(
+  materialize: () => string,
+  publish: (output: string) => void,
+): () => void {
+  let pending = false;
+
+  return () => {
+    if (pending) {
+      return;
+    }
+
+    pending = true;
+    window.setTimeout(() => {
+      pending = false;
+      publish(materialize());
+    }, 0);
+  };
+}
+
 export function TerminalView({ client, credentials, instanceId }: TerminalViewProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fallbackBufferRef = useRef("");
+  const syncFallbackOutputRef = useRef<() => void>(() => undefined);
   const outputStateRef = useRef<TerminalOutputState>({ chunks: [], visibleLength: 0, scrollOffset: 0, maxLength: 1_000_000 });
   const inputClientRef = useRef<InputRecoveryClient | null>(null);
   const [status, setStatus] = useState<ProtocolClientStatus>(client.status);
@@ -37,6 +57,16 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
   const [terminalOutput, setTerminalOutput] = useState("");
   const [terminalScale, setTerminalScale] = useState(calculateTerminalScale({ containerWidth: 960, characterWidth: 8 }));
   const [pendingInputs, setPendingInputs] = useState<PendingInput[]>([]);
+
+  useEffect(() => {
+    syncFallbackOutputRef.current = createTerminalOutputSyncScheduler(
+      () => getTerminalOutputText(outputStateRef.current),
+      (output) => {
+        fallbackBufferRef.current = output;
+        setTerminalOutput(output);
+      },
+    );
+  }, []);
 
   useEffect(() => client.on("status", (nextStatus) => {
     setStatus(nextStatus);
@@ -103,8 +133,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           break;
         case SERVER_MESSAGE_TYPES.OUTPUT: {
           outputStateRef.current = appendTerminalOutput(outputStateRef.current, message, terminalRef.current);
-          fallbackBufferRef.current = getTerminalOutputText(outputStateRef.current);
-          setTerminalOutput(fallbackBufferRef.current);
+          syncFallbackOutputRef.current();
           const nextOffset = message.offset + message.data.length;
           saveLastOutputOffset(message.instance_id, nextOffset);
           client.acknowledgeOutput(message.instance_id, nextOffset);

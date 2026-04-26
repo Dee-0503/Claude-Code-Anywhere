@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { SERVER_MESSAGE_TYPES, type OutputMessagePayload } from "../../../shared/protocol/messages.js";
 import { TerminalSearch, countTerminalSearchMatches, locateTerminalSearchMatch } from "../../src/components/TerminalSearch.js";
+import { createTerminalOutputSyncScheduler } from "../../src/terminal/TerminalView.js";
 import { appendTerminalOutput, getTerminalOutputText, scrollTerminalOutput, type TerminalOutputState } from "../../src/terminal/outputRenderer.js";
 
 function createOutputState(maxLength: number): TerminalOutputState {
@@ -114,5 +115,25 @@ describe("terminal display", () => {
     expect(state.visibleLength).toBeLessThanOrEqual(64);
     expect(getTerminalOutputText(state)).toBe(state.chunks.join(""));
     expect(getTerminalOutputText(state)).toContain("79-chunk");
+  });
+
+  it("coalesces terminal view fallback text materialization across output bursts", () => {
+    vi.useFakeTimers();
+    const materialize = vi.fn(() => "rendered output");
+    const publish = vi.fn();
+    const schedule = createTerminalOutputSyncScheduler(materialize, publish);
+
+    schedule();
+    schedule();
+    schedule();
+
+    expect(materialize).not.toHaveBeenCalled();
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(materialize).toHaveBeenCalledTimes(1);
+    expect(publish).toHaveBeenCalledWith("rendered output");
+    vi.useRealTimers();
   });
 });
