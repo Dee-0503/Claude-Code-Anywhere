@@ -1,14 +1,32 @@
 import { describe, expect, it } from "vitest";
 
-import { DEVICE_ROLES } from "../../../shared/protocol/domain.js";
-import { authenticateWebSocketConnection } from "../../src/api/websocket-auth.js";
+import { CLAUDE_INSTANCE_STATUSES, DEVICE_ROLES } from "../../../shared/protocol/domain.js";
+import {
+  authenticateWebSocketConnection,
+  rejectInvalidWebSocketRequestPolicy,
+} from "../../src/api/websocket-auth.js";
 import { createInMemoryDeviceRepository } from "../../src/auth/device-repository.js";
 import { createInMemoryPairingRepository } from "../../src/auth/pairing-repository.js";
 import { createBootstrapPairingService } from "../../src/auth/pairing-service.js";
 import { hashToken, verifyToken } from "../../src/auth/tokens.js";
+import { createInMemoryInstanceRepository } from "../../src/sessions/instance-repository.js";
+import { createInstanceService } from "../../src/sessions/instance-service.js";
 
 const NOW = new Date("2026-04-25T12:00:00.000Z");
 const TEN_MINUTES_MS = 10 * 60 * 1000;
+
+function createAuthenticatedAttachFixture() {
+  const service = createBootstrapPairingService({
+    now: () => NOW,
+    pairingTtlMs: TEN_MINUTES_MS,
+  });
+  const instances = createInstanceService({
+    repository: createInMemoryInstanceRepository(),
+    now: () => NOW,
+  });
+
+  return { service, instances };
+}
 
 describe("auth security", () => {
   it("rejects revoked device tokens at the websocket authentication boundary", async () => {
@@ -32,7 +50,141 @@ describe("auth security", () => {
       access_token: admin.access_token,
       instance_id: "main",
       last_output_offset: 0,
-    }, service.verifyDeviceToken)).rejects.toMatchObject({ code: "DEVICE_REVOKED" });
+    }, {
+      verifyDeviceToken: service.verifyDeviceToken,
+    })).rejects.toMatchObject({ code: "DEVICE_REVOKED" });
+  });
+
+  it("rejects websocket attaches without a token before instance lookup", async () => {
+    const { service, instances } = createAuthenticatedAttachFixture();
+    const bootstrap = await service.createBootstrapPairingCode();
+    const admin = await service.consumePairingCode({
+      pairing_code: bootstrap.pairing_code,
+      device_name: "Admin browser",
+    });
+    const { instance } = instances.startInstance({
+      cwd: "/workspace",
+      createdByDeviceId: admin.device_id,
+    });
+
+    await expect(authenticateWebSocketConnection({
+      device_id: admin.device_id,
+      access_token: "",
+      instance_id: instance.id,
+      last_output_offset: 0,
+    }, {
+      verifyDeviceToken: service.verifyDeviceToken,
+      findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
+    })).rejects.toMatchObject({ code: "MISSING_WEBSOCKET_TOKEN", statusCode: 401 });
+  });
+
+  it("rejects invalid websocket attach tokens", async () => {
+    const { service, instances } = createAuthenticatedAttachFixture();
+    const bootstrap = await service.createBootstrapPairingCode();
+    const admin = await service.consumePairingCode({
+      pairing_code: bootstrap.pairing_code,
+      device_name: "Admin browser",
+    });
+    const { instance } = instances.startInstance({
+      cwd: "/workspace",
+      createdByDeviceId: admin.device_id,
+    });
+
+    await expect(authenticateWebSocketConnection({
+      device_id: admin.device_id,
+      access_token: "tampered-token",
+      instance_id: instance.id,
+      last_output_offset: 0,
+    }, {
+      verifyDeviceToken: service.verifyDeviceToken,
+      findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
+    })).rejects.toMatchObject({ code: "INVALID_DEVICE_TOKEN", statusCode: 401 });
+  });
+
+  it("rejects websocket attaches when a valid token is not authorized for the target instance", async () => {
+    const { service, instances } = createAuthenticatedAttachFixture();
+    const bootstrap = await service.createBootstrapPairingCode();
+    const admin = await service.consumePairingCode({
+      pairing_code: bootstrap.pairing_code,
+      device_name: "Admin browser",
+    });
+    const pairing = await service.createPairingCode({
+      device_id: admin.device_id,
+      access_token: admin.access_token,
+      target_name_hint: "Member browser",
+    });
+    const member = await service.consumePairingCode({
+      pairing_code: pairing.pairing_code,
+      device_name: "Member browser",
+    });
+    const { instance } = instances.startInstance({
+      cwd: "/workspace",
+      createdByDeviceId: admin.device_id,
+    });
+
+    await expect(authenticateWebSocketConnection({
+      device_id: member.device_id,
+      access_token: member.access_token,
+      instance_id: instance.id,
+      last_output_offset: 0,
+    }, {
+      verifyDeviceToken: service.verifyDeviceToken,
+      findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
+    })).rejects.toMatchObject({ code: "WEBSOCKET_INSTANCE_NOT_FOUND", statusCode: 404 });
+  });
+
+  it("rejects websocket attaches to missing or non-attachable instances", async () => {
+    const { service, instances } = createAuthenticatedAttachFixture();
+    const bootstrap = await service.createBootstrapPairingCode();
+    const admin = await service.consumePairingCode({
+      pairing_code: bootstrap.pairing_code,
+      device_name: "Admin browser",
+    });
+    const { instance } = instances.startInstance({
+      cwd: "/workspace",
+      createdByDeviceId: admin.device_id,
+    });
+    instances.repository.update({
+      ...instance,
+      status: CLAUDE_INSTANCE_STATUSES.EXITED,
+      exitedAt: NOW.toISOString(),
+    });
+
+    await expect(authenticateWebSocketConnection({
+      device_id: admin.device_id,
+      access_token: admin.access_token,
+      instance_id: "missing-instance",
+      last_output_offset: 0,
+    }, {
+      verifyDeviceToken: service.verifyDeviceToken,
+      findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
+    })).rejects.toMatchObject({ code: "WEBSOCKET_INSTANCE_NOT_FOUND", statusCode: 404 });
+
+    await expect(authenticateWebSocketConnection({
+      device_id: admin.device_id,
+      access_token: admin.access_token,
+      instance_id: instance.id,
+      last_output_offset: 0,
+    }, {
+      verifyDeviceToken: service.verifyDeviceToken,
+      findAttachableInstanceForDevice: (instanceId, deviceId) => instances.getInstanceForDevice(instanceId, deviceId),
+    })).rejects.toMatchObject({ code: "WEBSOCKET_INSTANCE_NOT_ATTACHABLE", statusCode: 404 });
+  });
+
+  it("rejects websocket requests with paths or origins outside configured policy", () => {
+    expect(() => rejectInvalidWebSocketRequestPolicy({
+      path: "/api/ws/terminal",
+      origin: "https://console.example.com",
+      allowedPath: "/ws",
+      allowedOrigins: ["https://console.example.com"],
+    })).toThrow(expect.objectContaining({ code: "INVALID_WEBSOCKET_PATH", statusCode: 400 }));
+
+    expect(() => rejectInvalidWebSocketRequestPolicy({
+      path: "/ws",
+      origin: "https://evil.example.com",
+      allowedPath: "/ws",
+      allowedOrigins: ["https://console.example.com"],
+    })).toThrow(expect.objectContaining({ code: "WEBSOCKET_ORIGIN_DENIED", statusCode: 403 }));
   });
 
   it("does not create or mark a device when consuming an expired pairing code", async () => {
