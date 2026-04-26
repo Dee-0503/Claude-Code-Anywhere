@@ -42,5 +42,5 @@ When a functional point is completed and verified, create a focused commit for t
 
 ## PR Review Communication
 
-Review feedback must be posted as ordinary PR comments. After addressing feedback, the submitter must reply in the PR comments with the fix summary, commit reference, and fresh validation evidence before requesting re-review.
+Review feedback must be posted directly as ordinary PR comments after review; do not first provide a suggested comment in chat unless the user explicitly asks for a preview. After addressing feedback, the submitter must reply in the PR comments with the fix summary, commit reference, and fresh validation evidence before requesting re-review.
 <!-- MANUAL ADDITIONS END -->
