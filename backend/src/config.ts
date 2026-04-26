@@ -7,6 +7,9 @@ export interface AppConfig {
   readonly port: number;
   readonly databasePath: string;
   readonly tlsMode: TlsMode;
+  readonly tlsCertPath: string | null;
+  readonly tlsKeyPath: string | null;
+  readonly trustReverseProxy: boolean;
   readonly outputBufferBytes: number;
   readonly heartbeatIntervalMs: number;
   readonly heartbeatTimeoutMs: number;
@@ -21,6 +24,9 @@ const DEFAULT_CONFIG: AppConfig = {
   port: 5178,
   databasePath: resolve(process.cwd(), "data", "claude-code-anywhere.sqlite"),
   tlsMode: "off",
+  tlsCertPath: null,
+  tlsKeyPath: null,
+  trustReverseProxy: false,
   outputBufferBytes: 1024 * 1024,
   heartbeatIntervalMs: 15_000,
   heartbeatTimeoutMs: 45_000,
@@ -64,6 +70,35 @@ function readTlsMode(value: string | undefined): TlsMode {
   throw new Error("CCA_TLS_MODE must be one of: off, self-signed, provided");
 }
 
+function readBoolean(value: string | undefined, fallback: boolean, name: string): boolean {
+  if (value === undefined || value.trim() === "") {
+    return fallback;
+  }
+
+  if (value === "true") {
+    return true;
+  }
+
+  if (value === "false") {
+    return false;
+  }
+
+  throw new Error(`${name} must be true or false`);
+}
+
+function readTlsPath(value: string | undefined, name: string, tlsMode: TlsMode): string | null {
+  const trimmed = value?.trim();
+  if (tlsMode !== "provided") {
+    return null;
+  }
+
+  if (trimmed === undefined || trimmed === "") {
+    throw new Error(`${name} is required when CCA_TLS_MODE=provided`);
+  }
+
+  return resolve(trimmed);
+}
+
 export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
   const host = env.CCA_HOST?.trim() || DEFAULT_CONFIG.host;
   const port = readInteger(env.CCA_PORT, DEFAULT_CONFIG.port, "CCA_PORT", {
@@ -74,6 +109,16 @@ export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
     env.CCA_DATABASE_PATH?.trim() || DEFAULT_CONFIG.databasePath,
   );
   const tlsMode = readTlsMode(env.CCA_TLS_MODE);
+  const tlsCertPath = readTlsPath(env.CCA_TLS_CERT_PATH, "CCA_TLS_CERT_PATH", tlsMode);
+  const tlsKeyPath = readTlsPath(env.CCA_TLS_KEY_PATH, "CCA_TLS_KEY_PATH", tlsMode);
+  const trustReverseProxy = readBoolean(
+    env.CCA_TRUST_REVERSE_PROXY,
+    DEFAULT_CONFIG.trustReverseProxy,
+    "CCA_TRUST_REVERSE_PROXY",
+  );
+  if (env.NODE_ENV === "production" && tlsMode === "off" && !trustReverseProxy) {
+    throw new Error("CCA_TLS_MODE=off is only allowed in production when CCA_TRUST_REVERSE_PROXY=true");
+  }
   const outputBufferBytes = readInteger(
     env.CCA_OUTPUT_BUFFER_BYTES,
     DEFAULT_CONFIG.outputBufferBytes,
@@ -98,6 +143,9 @@ export function loadConfig(env: ConfigEnvironment = process.env): AppConfig {
     port,
     databasePath,
     tlsMode,
+    tlsCertPath,
+    tlsKeyPath,
+    trustReverseProxy,
     outputBufferBytes,
     heartbeatIntervalMs,
     heartbeatTimeoutMs,

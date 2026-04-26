@@ -244,7 +244,7 @@
 - [X] T085 [P] Add performance test for output streaming and 1MB ring buffer behavior in `backend/tests/performance/output-streaming.test.ts`
 - [X] T086 Run quickstart scenario validation and record results in `specs/001-remote-terminal/quickstart.md`
 - [X] T087 Verify coverage for core backend modules and frontend protocol modules in `vitest.config.ts`
-- [ ] T088 Audit production WSS/TLS configuration guidance in `backend/src/config.ts`
+- [X] T088 Audit production WSS/TLS configuration guidance in `backend/src/config.ts`
 - [ ] T089 Review spec-kit artifacts for consistency with implementation in `specs/001-remote-terminal/`
 
 ---
