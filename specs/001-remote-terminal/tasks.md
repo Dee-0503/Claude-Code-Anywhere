@@ -223,14 +223,14 @@
 ### Tests for User Story 8
 
 - [X] T078 [P] [US8] Add unit tests for teammate session detection mapping in `backend/tests/unit/team-detection.test.ts`
-- [ ] T079 [P] [US8] Add frontend integration test for team tabs and deep-link behavior in `frontend/tests/integration/team-visualization.test.tsx`
+- [X] T079 [P] [US8] Add frontend integration test for team tabs and deep-link behavior in `frontend/tests/integration/team-visualization.test.tsx`
 
 ### Implementation for User Story 8
 
 - [X] T080 [US8] Implement teammate session detector boundary in `backend/src/sessions/team-detector.ts`
 - [X] T081 [US8] Extend instance metadata with teammate grouping in `shared/protocol/domain.ts`
-- [ ] T082 [US8] Implement team tab and pane UI in `frontend/src/components/TeamWorkspace.tsx`
-- [ ] T083 [US8] Implement instance deep-link routing in `frontend/src/pages/App.tsx`
+- [X] T082 [US8] Implement team tab and pane UI in `frontend/src/components/TeamWorkspace.tsx`
+- [X] T083 [US8] Implement instance deep-link routing in `frontend/src/pages/App.tsx`
 
 **Checkpoint**: Team visualization is isolated from MVP terminal transport and can be enabled later.
 
