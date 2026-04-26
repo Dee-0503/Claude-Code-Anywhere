@@ -47,19 +47,41 @@ describe("instance API contract", () => {
     await expect(api.listInstances({
       device_id: device.device_id,
       access_token: device.access_token,
-    })).resolves.toEqual({ instances: [] });
+    })).resolves.toEqual({ instances: [], team_sessions: [] });
 
     const created = await api.createInstance({
       device_id: device.device_id,
       access_token: device.access_token,
       name: "main",
       cwd: "/Users/ceemac/my_product/Claude Code Anywhere",
+      team_metadata: {
+        team_id: "team-1",
+        teammate_id: "lead",
+        teammate_name: "Lead",
+      },
+    });
+
+    const reviewer = await api.createInstance({
+      device_id: device.device_id,
+      access_token: device.access_token,
+      name: "review",
+      cwd: "/Users/ceemac/my_product/Claude Code Anywhere",
+      team_metadata: {
+        team_id: "team-1",
+        teammate_id: "reviewer",
+        teammate_name: "Reviewer",
+      },
     });
 
     expect(created).toMatchObject({
       id: expect.any(String),
       name: "main",
       status: CLAUDE_INSTANCE_STATUSES.RUNNING,
+      team_metadata: {
+        team_id: "team-1",
+        teammate_id: "lead",
+        teammate_name: "Lead",
+      },
     });
     await expect(api.listInstances({
       device_id: device.device_id,
@@ -71,6 +93,41 @@ describe("instance API contract", () => {
           name: "main",
           status: CLAUDE_INSTANCE_STATUSES.RUNNING,
           last_active_at: "2026-04-25T12:00:00.000Z",
+          team_metadata: {
+            team_id: "team-1",
+            teammate_id: "lead",
+            teammate_name: "Lead",
+          },
+        },
+        {
+          id: reviewer.id,
+          name: "review",
+          status: CLAUDE_INSTANCE_STATUSES.RUNNING,
+          last_active_at: "2026-04-25T12:00:00.000Z",
+          team_metadata: {
+            team_id: "team-1",
+            teammate_id: "reviewer",
+            teammate_name: "Reviewer",
+          },
+        },
+      ],
+      team_sessions: [
+        {
+          team_id: "team-1",
+          teammates: [
+            {
+              instance_id: created.id,
+              instance_name: "main",
+              teammate_id: "lead",
+              teammate_name: "Lead",
+            },
+            {
+              instance_id: reviewer.id,
+              instance_name: "review",
+              teammate_id: "reviewer",
+              teammate_name: "Reviewer",
+            },
+          ],
         },
       ],
     });
