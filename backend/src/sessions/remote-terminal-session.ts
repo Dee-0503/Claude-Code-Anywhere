@@ -113,7 +113,7 @@ function createHarnessSessionService(
       input_id: message.id,
       device_id: message.deviceId,
       payload: message.payload,
-      status: message.status === "cancelled" ? "cancelled" as const : "queued" as const,
+      status: "queued" as const,
     }));
     broadcast(instanceId, {
       type: SERVER_MESSAGE_TYPES.QUEUED_INPUTS,

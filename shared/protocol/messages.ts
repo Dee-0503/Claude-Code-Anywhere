@@ -99,6 +99,7 @@ export interface OutputGapMessagePayload {
 export const INPUT_ACK_STATUSES = {
   ACCEPTED: "accepted",
   DUPLICATE: "duplicate",
+  PENDING_CONFIRMATION: "pending_confirmation",
   REJECTED: "rejected",
 } as const;
 
@@ -119,7 +120,7 @@ export interface QueuedInputMessagePayload {
     input_id: string;
     device_id: string;
     payload: string;
-    status: "queued" | "cancelled";
+    status: "queued";
   }>;
 }
 

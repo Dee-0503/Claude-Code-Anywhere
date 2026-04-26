@@ -40,7 +40,7 @@ export function createInputQueue(options: InputQueueOptions = {}) {
         payload: input.payload,
         now: now(),
       });
-      return { status: INPUT_ACK_STATUSES.REJECTED, message };
+      return { status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION, message };
     }
 
     const message = repository.create({

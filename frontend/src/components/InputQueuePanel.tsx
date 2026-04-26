@@ -4,7 +4,6 @@ export interface InputQueuePanelItem {
   readonly inputId: string;
   readonly deviceId: string;
   readonly payload: string;
-  readonly status: "queued" | "cancelled";
 }
 
 export function renderInputQueuePanel(inputs: readonly InputQueuePanelItem[]): string {
@@ -12,15 +11,9 @@ export function renderInputQueuePanel(inputs: readonly InputQueuePanelItem[]): s
     return "没有等待发送的输入。";
   }
 
-  const queued = inputs.filter((input) => input.status === "queued");
-  const details = inputs.map((input) => {
-    if (input.status === "cancelled") {
-      return `${input.deviceId}：已取消`;
-    }
-    return `${input.deviceId}：${input.payload.trim()}`;
-  });
+  const details = inputs.map((input) => `${input.deviceId}：${input.payload.trim()}`);
 
-  return `${queued.length} 条输入等待发送。${details.join("。")}`;
+  return `${inputs.length} 条输入等待发送。${details.join("。")}`;
 }
 
 export interface InputQueuePanelProps {
@@ -35,10 +28,8 @@ export function InputQueuePanel({ inputs, onCancel }: InputQueuePanelProps): Rea
       <ul>
         {inputs.map((input) => (
           <li key={input.inputId}>
-            {input.deviceId}：{input.status === "cancelled" ? "已取消" : input.payload}
-            {input.status === "queued" ? (
-              <button type="button" onClick={() => onCancel?.(input.inputId)}>取消</button>
-            ) : null}
+            {input.deviceId}：{input.payload}
+            <button type="button" onClick={() => onCancel?.(input.inputId)}>取消</button>
           </li>
         ))}
       </ul>

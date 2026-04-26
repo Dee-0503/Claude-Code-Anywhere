@@ -44,7 +44,7 @@ describe("multi-client input queue", () => {
       payload: "",
     });
 
-    expect(result.status).toBe(INPUT_ACK_STATUSES.REJECTED);
+    expect(result.status).toBe(INPUT_ACK_STATUSES.PENDING_CONFIRMATION);
     expect(result.message.status).toBe("queued");
     expect(queue.listQueuedInputs("instance-id").map((message) => message.id)).toEqual(["interrupt-1"]);
     expect(queue.classify("")).toBe("interrupt");

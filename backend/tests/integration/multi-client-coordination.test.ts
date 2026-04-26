@@ -81,6 +81,12 @@ describe("multi-client input coordination", () => {
         expect.objectContaining({ input_id: "mac-queued", status: "queued" }),
       ],
     }));
+    expect(first.messages).not.toContainEqual(expect.objectContaining({
+      type: SERVER_MESSAGE_TYPES.QUEUED_INPUTS,
+      inputs: expect.arrayContaining([
+        expect.objectContaining({ status: "cancelled" }),
+      ]),
+    }));
     await first.confirmPendingInput(["mac-queued", "phone-queued"]);
     expect(harness.pty.inputs(first.firstMessage.instance_id)).toEqual(["npm test\n"]);
 
