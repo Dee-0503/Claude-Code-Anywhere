@@ -180,12 +180,14 @@ export class ProtocolClient {
   sendInput(params: {
     instanceId: ClaudeInstanceId;
     inputId: InputMessageId;
+    inputOffset: number;
     payload: string;
   }): void {
     const message: InputMessagePayload = {
       type: CLIENT_MESSAGE_TYPES.INPUT,
       instance_id: params.instanceId,
       input_id: params.inputId,
+      input_offset: params.inputOffset,
       payload: params.payload
     };
 

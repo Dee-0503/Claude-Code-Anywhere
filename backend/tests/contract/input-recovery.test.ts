@@ -23,6 +23,7 @@ describe('input recovery protocol contract', () => {
           type: CLIENT_MESSAGE_TYPES.INPUT,
           instance_id: 'instance-id',
           input_id: 'input-id-1',
+          input_offset: 1,
           payload: 'npm test\n'
         })
       )
@@ -30,6 +31,7 @@ describe('input recovery protocol contract', () => {
       type: CLIENT_MESSAGE_TYPES.INPUT,
       instance_id: 'instance-id',
       input_id: 'input-id-1',
+      input_offset: 1,
       payload: 'npm test\n'
     } satisfies InputMessagePayload);
 
@@ -37,12 +39,14 @@ describe('input recovery protocol contract', () => {
       protocol.serializeInputAck({
         instanceId: 'instance-id',
         inputId: 'input-id-1',
+        inputOffset: 1,
         status: INPUT_ACK_STATUSES.ACCEPTED
       })
     ).toEqual({
       type: SERVER_MESSAGE_TYPES.INPUT_ACK,
       instance_id: 'instance-id',
       input_id: 'input-id-1',
+      input_offset: 1,
       status: INPUT_ACK_STATUSES.ACCEPTED
     } satisfies InputAckMessagePayload);
   });

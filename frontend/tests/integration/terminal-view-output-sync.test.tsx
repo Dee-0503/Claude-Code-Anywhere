@@ -176,24 +176,28 @@ describe('TerminalView output synchronization', () => {
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: 'instance-id',
         input_id: 'input-1',
+        input_offset: 1,
         status: INPUT_ACK_STATUSES.ACCEPTED
       });
       emit({
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: 'instance-id',
         input_id: 'input-1',
+        input_offset: 1,
         status: INPUT_ACK_STATUSES.ACCEPTED
       });
       emit({
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: 'instance-id',
         input_id: 'input-2',
+        input_offset: 2,
         status: INPUT_ACK_STATUSES.DUPLICATE
       });
       emit({
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: 'instance-id',
         input_id: 'input-3',
+        input_offset: 3,
         status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION
       });
     });

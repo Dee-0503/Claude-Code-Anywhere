@@ -5,7 +5,9 @@ import { createInputRecoveryClient } from '../../src/protocol/input-client.js';
 
 function createTransport() {
   const sendInput =
-    vi.fn<(input: { instanceId: string; inputId: string; payload: string }) => void>();
+    vi.fn<
+      (input: { instanceId: string; inputId: string; inputOffset: number; payload: string }) => void
+    >();
   return { sendInput };
 }
 
@@ -28,11 +30,13 @@ describe('input recovery client', () => {
     expect(transport.sendInput).toHaveBeenNthCalledWith(1, {
       instanceId: 'instance-id',
       inputId: 'input-1',
+      inputOffset: 1,
       payload: 'npm test\n'
     });
     expect(transport.sendInput).toHaveBeenNthCalledWith(2, {
       instanceId: 'instance-id',
       inputId: 'input-1',
+      inputOffset: 1,
       payload: 'npm test\n'
     });
     vi.useRealTimers();
@@ -52,6 +56,7 @@ describe('input recovery client', () => {
       type: SERVER_MESSAGE_TYPES.INPUT_ACK,
       instance_id: 'instance-id',
       input_id: 'input-1',
+      input_offset: 1,
       status: INPUT_ACK_STATUSES.DUPLICATE
     });
 
@@ -74,6 +79,7 @@ describe('input recovery client', () => {
       type: SERVER_MESSAGE_TYPES.INPUT_ACK,
       instance_id: 'instance-id',
       input_id: 'interrupt-1',
+      input_offset: 1,
       status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION
     });
     vi.advanceTimersByTime(1_000);
@@ -107,6 +113,7 @@ describe('input recovery client', () => {
     expect(transport.sendInput).toHaveBeenCalledWith({
       instanceId: 'instance-id',
       inputId: 'input-1',
+      inputOffset: 1,
       payload: 'npm test\n'
     });
   });

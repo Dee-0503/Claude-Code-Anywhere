@@ -8,13 +8,19 @@ import {
 
 export interface PendingInput {
   readonly inputId: InputMessageId;
+  readonly inputOffset: number;
   readonly payload: string;
   readonly sent: boolean;
   readonly awaitingConfirmation: boolean;
 }
 
 export interface InputTransport {
-  sendInput(input: { instanceId: string; inputId: InputMessageId; payload: string }): void;
+  sendInput(input: {
+    instanceId: string;
+    inputId: InputMessageId;
+    inputOffset: number;
+    payload: string;
+  }): void;
 }
 
 export interface InputRecoveryClientOptions {
@@ -31,12 +37,14 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
     options.createInputId ??
     (() => `${options.deviceId}:${Date.now()}:${Math.random().toString(36).slice(2)}`);
   const pendingInputs = new Map<InputMessageId, PendingInput>();
+  let nextInputOffset = 1;
   let online = true;
 
   function transmit(input: PendingInput): void {
     options.transport.sendInput({
       instanceId: options.instanceId,
       inputId: input.inputId,
+      inputOffset: input.inputOffset,
       payload: input.payload
     });
     pendingInputs.set(input.inputId, { ...input, sent: true });
@@ -54,6 +62,7 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
   function send(payload: string): InputMessageId {
     const input: PendingInput = {
       inputId: createInputId(),
+      inputOffset: nextInputOffset++,
       payload,
       sent: false,
       awaitingConfirmation: false

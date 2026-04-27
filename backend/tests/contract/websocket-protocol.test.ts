@@ -5,6 +5,8 @@ import {
   CLIENT_MESSAGE_TYPES,
   SERVER_MESSAGE_TYPES,
   type AckOutputMessagePayload,
+  type CancelInputMessagePayload,
+  type ConfirmInterruptMessagePayload,
   type HelloMessagePayload,
   type OutputGapMessagePayload,
   type OutputMessagePayload,
@@ -176,6 +178,74 @@ describe('websocket protocol contract', () => {
       requested_offset: 100,
       available_from_offset: 900
     } satisfies OutputGapMessagePayload);
+  });
+
+  it('rejects malformed client messages before they reach session logic', () => {
+    const protocol = createWebSocketProtocolService();
+    const oversizedPayload = 'x'.repeat(65_537);
+
+    expect(() => protocol.parseClientMessage('{bad json')).toThrow(/valid JSON/);
+    expect(() => protocol.parseClientMessage(JSON.stringify([]))).toThrow(/object/);
+    expect(() =>
+      protocol.parseClientMessage(JSON.stringify({ type: 'unknown', instance_id: 'instance-id' }))
+    ).toThrow(/type/);
+    expect(() =>
+      protocol.parseClientMessage(
+        JSON.stringify({
+          type: CLIENT_MESSAGE_TYPES.ACK_OUTPUT,
+          instance_id: 'instance-id',
+          offset: -1
+        })
+      )
+    ).toThrow(/offset/);
+    expect(() =>
+      protocol.parseClientMessage(
+        JSON.stringify({
+          type: CLIENT_MESSAGE_TYPES.INPUT,
+          instance_id: 'instance-id',
+          input_id: 'input-id',
+          input_offset: 1,
+          payload: oversizedPayload
+        })
+      )
+    ).toThrow(/payload/);
+    expect(() =>
+      protocol.parseClientMessage(
+        JSON.stringify({ type: CLIENT_MESSAGE_TYPES.HEARTBEAT, sent_at: 'not-a-date' })
+      )
+    ).toThrow(/sent_at/);
+  });
+
+  it('validates cancel and confirm client message shapes', () => {
+    const protocol = createWebSocketProtocolService();
+
+    expect(
+      protocol.parseClientMessage(
+        JSON.stringify({
+          type: CLIENT_MESSAGE_TYPES.CANCEL_INPUT,
+          instance_id: 'instance-id',
+          input_id: 'input-id-1'
+        })
+      )
+    ).toEqual({
+      type: CLIENT_MESSAGE_TYPES.CANCEL_INPUT,
+      instance_id: 'instance-id',
+      input_id: 'input-id-1'
+    } satisfies CancelInputMessagePayload);
+
+    expect(
+      protocol.parseClientMessage(
+        JSON.stringify({
+          type: CLIENT_MESSAGE_TYPES.CONFIRM_INTERRUPT,
+          instance_id: 'instance-id',
+          input_id: 'input-id-1'
+        })
+      )
+    ).toEqual({
+      type: CLIENT_MESSAGE_TYPES.CONFIRM_INTERRUPT,
+      instance_id: 'instance-id',
+      input_id: 'input-id-1'
+    } satisfies ConfirmInterruptMessagePayload);
   });
 
   it('replays buffered output from last_output_offset or emits output_gap when history was evicted', async () => {
