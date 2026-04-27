@@ -9,6 +9,7 @@ on:
       - '**/*.md'
       - 'CLAUDE.md'
       - '.claude/rules/**/*.md'
+      - '.github/workflows/docs-only-auto-merge.yml'
 
 permissions:
   contents: read
