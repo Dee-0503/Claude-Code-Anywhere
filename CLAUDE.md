@@ -47,4 +47,6 @@ When a functional point is completed and verified, create a focused commit for t
 
 Review feedback must be posted directly as ordinary PR comments after review; do not first provide a suggested comment in chat unless the user explicitly asks for a preview. After addressing feedback, the submitter must reply in the PR comments with the fix summary, commit reference, and fresh validation evidence before requesting re-review.
 
+After a developer teammate opens or updates a PR for review, they should start Monitor for that PR's comments. When review comments arrive, the developer teammate should automatically begin the fix workflow and then reply in the PR with the fix summary, commit reference, and fresh validation evidence.
+
 <!-- MANUAL ADDITIONS END -->

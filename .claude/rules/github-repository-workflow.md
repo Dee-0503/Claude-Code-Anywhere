@@ -73,6 +73,7 @@ main
 - PRs should describe the intent, scope, test evidence, and any known risks.
 - Keep PRs focused. Split when rollback or review ownership would otherwise be unclear.
 - Before requesting merge, run the relevant spec-kit validation/checklist for the current phase.
+- After a developer teammate opens or updates a PR for review, they should start Monitor for that PR's comments. When review comments arrive, automatically begin the fix workflow, push a focused follow-up commit, and reply in the PR with the fix summary, commit reference, and fresh validation evidence.
 - After implementation is pushed, request review through PR comments rather than out-of-band notes; when review feedback is addressed, reply on the PR with the fix summary, commit reference, and fresh validation evidence before asking for another review.
 
 ## Review and Merge
