@@ -96,8 +96,20 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
     return [...pendingInputs.values()];
   }
 
+  function replayUnacknowledgedInputs(): void {
+    for (const input of pendingInputs.values()) {
+      if (!input.awaitingConfirmation) {
+        transmit(input);
+      }
+    }
+  }
+
   function setOnline(nextOnline: boolean): void {
+    const wasOnline = online;
     online = nextOnline;
+    if (!wasOnline && nextOnline) {
+      replayUnacknowledgedInputs();
+    }
   }
 
   function confirmReplay(): void {
