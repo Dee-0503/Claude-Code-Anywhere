@@ -28,6 +28,7 @@ export interface InputRecoveryClientOptions {
   readonly instanceId: string;
   readonly transport: InputTransport;
   readonly retryAfterMs?: number;
+  readonly createInputId?: () => InputMessageId;
   readonly initialOnline?: boolean;
 }
 

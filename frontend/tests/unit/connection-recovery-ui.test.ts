@@ -215,7 +215,11 @@ describe('connection recovery UI helpers', () => {
     });
     const messages: string[] = [];
     const statuses: string[] = [];
-    client.on('message', (message) => messages.push(message.instance_id));
+    client.on('message', (message) => {
+      if ('instance_id' in message) {
+        messages.push(message.instance_id);
+      }
+    });
     client.on('status', (status) => statuses.push(status));
 
     client.connect({
