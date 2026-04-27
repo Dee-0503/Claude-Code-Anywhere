@@ -65,7 +65,7 @@ main
 - Spec-kit review PRs must target `develop` as the base branch.
 - Delete short-lived review branches after merge. Never continue pushing new commits to an already-merged PR branch; create a new spec-scoped review branch instead.
 - Workflow or repository-rule changes must use their own docs branch/PR and must not be bundled into user-story implementation PRs.
-- `docs/*` PRs targeting `develop` may be auto-merged without human review only when the docs-only workflow validates that every changed file is documentation, project guidance, or the docs-only workflow itself.
+- `docs/*` PRs targeting `develop` may be auto-merged without human review only when the docs-only workflow validates that every changed file is documentation, project guidance, or the docs-only workflow itself. After auto-merge, the workflow should create or reuse an open `develop` → `test` PR so docs changes continue through the staging gate.
 - `docs/*` PRs targeting `test` or `main` still follow release-branch protection and review requirements.
 - Keep commits inside the PR at functional-point granularity so review and rollback can target the smallest coherent change.
 - If foundational work is large or blocks multiple user stories, split it into a separate foundational PR before story-level PRs.
