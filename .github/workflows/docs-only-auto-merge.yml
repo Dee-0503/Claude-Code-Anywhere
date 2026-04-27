@@ -48,3 +48,31 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge "$PR_URL" --squash --delete-branch
+
+      - name: Create develop to test pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          existing_pr=$(gh pr list --base test --head develop --state open --json url --jq '.[0].url')
+
+          if [ -n "$existing_pr" ]; then
+            echo "Develop-to-test PR already exists: $existing_pr"
+            exit 0
+          fi
+
+          gh pr create \
+            --base test \
+            --head develop \
+            --title "Promote develop to test" \
+            --body "$(cat <<'EOF'
+          Automated follow-up PR after docs-only changes were merged into develop.
+
+          ## Summary
+          - Promote the latest develop branch changes to test after docs-only auto-merge.
+
+          ## Test plan
+          - [ ] Validate test-branch checks and review requirements before merging.
+          EOF
+          )"
