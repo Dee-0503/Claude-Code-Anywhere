@@ -33,7 +33,14 @@ jobs:
             exit 1
           fi
 
-          invalid_files=$(printf '%s\n' "$changed_files" | grep -Ev '(^|/)[^/]+\.md$|^CLAUDE\.md$|^\.claude/rules/.*\.md$|^specs/.*\.md$|^\.github/workflows/(docs-only-auto-merge|code-ci)\.yml$' || true)
+          invalid_files=$(printf '%s\n' "$changed_files" | grep -Ev '(^|/)[^/]+\.md$|^CLAUDE\.md$|^\.claude/rules/.*\.md$|^specs/.*\.md$' || true)
+          protected_files=$(printf '%s\n' "$changed_files" | grep -E '^\.github/workflows/' || true)
+
+          if [ -n "$protected_files" ]; then
+            echo "Workflow self-modifications require normal PR review and checks:"
+            printf '%s\n' "$protected_files"
+            exit 1
+          fi
 
           if [ -n "$invalid_files" ]; then
             echo "This docs/* PR contains non-docs-only files:"
