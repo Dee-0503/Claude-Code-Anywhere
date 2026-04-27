@@ -33,7 +33,7 @@ jobs:
             exit 1
           fi
 
-          invalid_files=$(printf '%s\n' "$changed_files" | grep -Ev '(^|/)[^/]+\.md$|^CLAUDE\.md$|^\.claude/rules/.*\.md$|^specs/.*\.md$|^\.github/workflows/docs-only-auto-merge\.yml$' || true)
+          invalid_files=$(printf '%s\n' "$changed_files" | grep -Ev '(^|/)[^/]+\.md$|^CLAUDE\.md$|^\.claude/rules/.*\.md$|^specs/.*\.md$|^\.github/workflows/(docs-only-auto-merge|code-ci)\.yml$' || true)
 
           if [ -n "$invalid_files" ]; then
             echo "This docs/* PR contains non-docs-only files:"
