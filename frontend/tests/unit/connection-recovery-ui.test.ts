@@ -176,6 +176,100 @@ describe('connection recovery UI helpers', () => {
     expect(sockets).toHaveLength(2);
   });
 
+  it('lets a new connection generation take over while an old socket is still open', () => {
+    const sockets: FakeWebSocket[] = [];
+    class FakeWebSocket {
+      static readonly CONNECTING = 0;
+      static readonly OPEN = 1;
+      static readonly CLOSING = 2;
+      static readonly CLOSED = 3;
+      readonly listeners = new Map<string, Array<(event: Event) => void>>();
+      readyState = FakeWebSocket.CONNECTING;
+      url: string;
+
+      constructor(url: string) {
+        this.url = url;
+        sockets.push(this);
+      }
+
+      addEventListener(event: string, listener: (event: Event) => void): void {
+        this.listeners.set(event, [...(this.listeners.get(event) ?? []), listener]);
+      }
+
+      close(): void {
+        this.readyState = FakeWebSocket.CLOSED;
+      }
+
+      send(): void {}
+
+      dispatch(event: string, payload: Event): void {
+        for (const listener of this.listeners.get(event) ?? []) {
+          listener(payload);
+        }
+      }
+    }
+
+    const client = new ProtocolClient({
+      url: 'wss://terminal.example/ws',
+      WebSocketImpl: FakeWebSocket as unknown as typeof WebSocket
+    });
+    const messages: string[] = [];
+    const statuses: string[] = [];
+    client.on('message', (message) => messages.push(message.instance_id));
+    client.on('status', (status) => statuses.push(status));
+
+    client.connect({
+      device_id: 'device-id',
+      access_token: 'token',
+      instance_id: 'old-instance',
+      last_output_offset: 0,
+      last_input_offset: 0
+    });
+    sockets[0]!.readyState = FakeWebSocket.OPEN;
+    sockets[0]!.dispatch('open', new Event('open'));
+
+    client.connect({
+      device_id: 'device-id',
+      access_token: 'token',
+      instance_id: 'new-instance',
+      last_output_offset: 0,
+      last_input_offset: 0
+    });
+
+    expect(sockets).toHaveLength(2);
+
+    sockets[1]!.readyState = FakeWebSocket.OPEN;
+    sockets[1]!.dispatch('open', new Event('open'));
+    sockets[0]!.dispatch(
+      'message',
+      new MessageEvent('message', {
+        data: JSON.stringify({
+          type: 'hello',
+          server_id: 'server-id',
+          instance_id: 'old-instance',
+          connection_id: 'old-connection',
+          next_output_offset: 0
+        })
+      })
+    );
+    sockets[0]!.dispatch('close', { code: 1006, reason: '', wasClean: false } as CloseEvent);
+    sockets[1]!.dispatch(
+      'message',
+      new MessageEvent('message', {
+        data: JSON.stringify({
+          type: 'hello',
+          server_id: 'server-id',
+          instance_id: 'new-instance',
+          connection_id: 'new-connection',
+          next_output_offset: 0
+        })
+      })
+    );
+
+    expect(messages).toEqual(['new-instance']);
+    expect(statuses.at(-1)).toBe('open');
+  });
+
   it('describes authorization prompts as terminal-native decisions', () => {
     expect(
       renderAuthorizationPrompt({

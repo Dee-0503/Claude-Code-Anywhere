@@ -191,6 +191,7 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
       deviceId: credentials.device_id,
       instanceId,
       transport: client,
+      initialOnline: client.status === 'open',
       createInputId: () => createInputId(credentials.device_id)
     });
     setPendingInputs([]);
@@ -198,6 +199,10 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
 
   useEffect(() => {
     const unsubscribe = client.on('message', (message) => {
+      if ('instance_id' in message && message.instance_id !== instanceId) {
+        return;
+      }
+
       switch (message.type) {
         case SERVER_MESSAGE_TYPES.HELLO:
           setNotice(`已连接，服务端输出偏移：${message.next_output_offset}`);
@@ -216,7 +221,16 @@ export function TerminalView({ client, credentials, instanceId }: TerminalViewPr
           break;
         }
         case SERVER_MESSAGE_TYPES.OUTPUT_GAP:
+          outputStateRef.current = {
+            ...outputStateRef.current,
+            chunks: [],
+            visibleLength: 0,
+            scrollOffset: 0
+          };
+          terminalRef.current?.write('\x1bc');
+          syncFallbackOutputRef.current();
           saveLastOutputOffset(message.instance_id, message.available_from_offset);
+          client.updateRecoveryOffsets?.({ lastOutputOffset: message.available_from_offset });
           setNotice(
             `输出缓冲已过期，请求偏移 ${message.requested_offset}，将从 ${message.available_from_offset} 继续。`
           );

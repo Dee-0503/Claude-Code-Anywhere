@@ -28,7 +28,7 @@ export interface InputRecoveryClientOptions {
   readonly instanceId: string;
   readonly transport: InputTransport;
   readonly retryAfterMs?: number;
-  readonly createInputId?: () => InputMessageId;
+  readonly initialOnline?: boolean;
 }
 
 export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
@@ -38,7 +38,7 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
     (() => `${options.deviceId}:${Date.now()}:${Math.random().toString(36).slice(2)}`);
   const pendingInputs = new Map<InputMessageId, PendingInput>();
   let nextInputOffset = 1;
-  let online = true;
+  let online = options.initialOnline ?? true;
 
   function transmit(input: PendingInput): void {
     options.transport.sendInput({

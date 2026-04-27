@@ -76,6 +76,7 @@ export class ProtocolClient {
   private connectionParams: WebSocketConnectionParams | null = null;
   private reconnectTimer: number | null = null;
   private reconnectDelayMs: number;
+  private connectionGeneration = 0;
   private intentionalDisconnect = false;
   private readonly initialReconnectDelayMs: number;
   private readonly maxReconnectDelayMs: number;
@@ -95,35 +96,44 @@ export class ProtocolClient {
   connect(params: WebSocketConnectionParams): void {
     this.connectionParams = params;
     this.intentionalDisconnect = false;
-    this.openSocket(params, 'connecting');
+    this.connectionGeneration += 1;
+    this.openSocket(params, 'connecting', this.connectionGeneration);
   }
 
-  private openSocket(params: WebSocketConnectionParams, status: ProtocolClientStatus): void {
-    if (this.socket && this.socket.readyState !== this.WebSocketImpl.CLOSED) {
-      return;
-    }
-
+  private openSocket(
+    params: WebSocketConnectionParams,
+    status: ProtocolClientStatus,
+    generation: number
+  ): void {
+    const previousSocket = this.socket;
     const url = this.buildUrl(params);
     const socket = new this.WebSocketImpl(url);
     this.socket = socket;
+    if (previousSocket && previousSocket.readyState !== this.WebSocketImpl.CLOSED) {
+      previousSocket.close(1000, 'superseded by newer connection');
+    }
     this.setStatus(status);
 
     socket.addEventListener('open', (event) => {
+      if (generation !== this.connectionGeneration || this.socket !== socket) {
+        return;
+      }
       this.reconnectDelayMs = this.initialReconnectDelayMs;
       this.setStatus('open');
       this.emit('open', event);
     });
 
     socket.addEventListener('close', (event) => {
-      if (this.socket === socket) {
-        this.socket = null;
+      if (generation !== this.connectionGeneration || this.socket !== socket) {
+        return;
       }
+      this.socket = null;
       if (
         !this.intentionalDisconnect &&
         this.connectionParams !== null &&
         shouldReconnectAfterClose(event)
       ) {
-        this.scheduleReconnect();
+        this.scheduleReconnect(generation);
       } else {
         this.setStatus('closed');
       }
@@ -131,11 +141,17 @@ export class ProtocolClient {
     });
 
     socket.addEventListener('error', (event) => {
+      if (generation !== this.connectionGeneration || this.socket !== socket) {
+        return;
+      }
       this.setStatus('error');
       this.emit('error', event);
     });
 
     socket.addEventListener('message', (event) => {
+      if (generation !== this.connectionGeneration || this.socket !== socket) {
+        return;
+      }
       const message = this.parseMessage(event.data);
       if (message) {
         this.emit('message', message);
@@ -238,7 +254,7 @@ export class ProtocolClient {
     return url.toString();
   }
 
-  private scheduleReconnect(): void {
+  private scheduleReconnect(generation: number = this.connectionGeneration): void {
     if (this.reconnectTimer !== null || this.connectionParams === null) {
       return;
     }
@@ -248,8 +264,8 @@ export class ProtocolClient {
     this.reconnectDelayMs = Math.min(this.reconnectDelayMs * 2, this.maxReconnectDelayMs);
     this.reconnectTimer = window.setTimeout(() => {
       this.reconnectTimer = null;
-      if (this.connectionParams !== null) {
-        this.openSocket(this.connectionParams, 'reconnecting');
+      if (this.connectionParams !== null && generation === this.connectionGeneration) {
+        this.openSocket(this.connectionParams, 'reconnecting', generation);
       }
     }, delay);
   }
