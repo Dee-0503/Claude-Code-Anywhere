@@ -42,12 +42,14 @@ describe('weak network input recovery', () => {
       type: SERVER_MESSAGE_TYPES.INPUT_ACK,
       instance_id: session.firstMessage.instance_id,
       input_id: 'input-1',
+      input_offset: 1,
       status: INPUT_ACK_STATUSES.ACCEPTED
     });
     expect(session.messages).toContainEqual({
       type: SERVER_MESSAGE_TYPES.INPUT_ACK,
       instance_id: session.firstMessage.instance_id,
       input_id: 'input-1',
+      input_offset: 1,
       status: INPUT_ACK_STATUSES.DUPLICATE
     });
     expect(harness.pty.inputs(session.firstMessage.instance_id)).toEqual(['npm test\n']);

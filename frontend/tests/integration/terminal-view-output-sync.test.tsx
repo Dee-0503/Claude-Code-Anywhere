@@ -176,24 +176,28 @@ describe('TerminalView output synchronization', () => {
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: 'instance-id',
         input_id: 'input-1',
+        input_offset: 1,
         status: INPUT_ACK_STATUSES.ACCEPTED
       });
       emit({
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: 'instance-id',
         input_id: 'input-1',
+        input_offset: 1,
         status: INPUT_ACK_STATUSES.ACCEPTED
       });
       emit({
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: 'instance-id',
         input_id: 'input-2',
+        input_offset: 2,
         status: INPUT_ACK_STATUSES.DUPLICATE
       });
       emit({
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: 'instance-id',
         input_id: 'input-3',
+        input_offset: 3,
         status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION
       });
     });
@@ -206,9 +210,63 @@ describe('TerminalView output synchronization', () => {
     });
   });
 
-  it('unsubscribes message handlers so stale socket events cannot update unmounted state', async () => {
+  it('queues terminal input until the protocol socket is open', async () => {
     const { TerminalView } = await import('../../src/terminal/TerminalView.js');
-    const messageListeners = new Set<(message: ServerToClientMessage) => void>();
+    const statusListeners: Array<(status: ProtocolClientStatus) => void> = [];
+    const client = {
+      status: 'connecting' as ProtocolClientStatus,
+      on: vi.fn(
+        (
+          event: keyof ProtocolClientEventMap,
+          listener: (payload: ProtocolClientEventMap[keyof ProtocolClientEventMap]) => void
+        ) => {
+          if (event === 'status') {
+            statusListeners.push(listener as (status: ProtocolClientStatus) => void);
+          }
+          return () => undefined;
+        }
+      ),
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      sendInput: vi.fn(),
+      acknowledgeOutput: vi.fn(),
+      updateRecoveryOffsets: vi.fn()
+    } as unknown as ProtocolClient;
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <TerminalView
+          client={client}
+          credentials={{ device_id: 'device-id', access_token: 'token' }}
+          instanceId="instance-id"
+        />
+      );
+    });
+
+    act(() => {
+      terminalInstances[0]!.dataHandler?.('queued input');
+    });
+
+    expect(client.sendInput).not.toHaveBeenCalled();
+
+    act(() => {
+      statusListeners[0]?.('open');
+    });
+
+    expect(client.sendInput).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'instance-id', payload: 'queued input' })
+    );
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
+  it('drops instance scoped messages for inactive instances and resets state after output gaps', async () => {
+    const { TerminalView } = await import('../../src/terminal/TerminalView.js');
+    const messageListeners: Array<(message: ServerToClientMessage) => void> = [];
     const client = {
       status: 'open' as ProtocolClientStatus,
       on: vi.fn(
@@ -217,9 +275,7 @@ describe('TerminalView output synchronization', () => {
           listener: (payload: ProtocolClientEventMap[keyof ProtocolClientEventMap]) => void
         ) => {
           if (event === 'message') {
-            const typedListener = listener as (message: ServerToClientMessage) => void;
-            messageListeners.add(typedListener);
-            return () => messageListeners.delete(typedListener);
+            messageListeners.push(listener as (message: ServerToClientMessage) => void);
           }
           return () => undefined;
         }
@@ -232,26 +288,51 @@ describe('TerminalView output synchronization', () => {
     const container = document.createElement('div');
     const root = createRoot(container);
 
+    getTerminalOutputText
+      .mockReturnValueOnce('active output')
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('after gap');
+
     act(() => {
-      root.render(<TerminalView client={client} credentials={null} instanceId="instance-id" />);
+      root.render(<TerminalView client={client} credentials={null} instanceId="active-instance" />);
     });
 
-    expect(messageListeners.size).toBe(1);
+    act(() => {
+      const emit = messageListeners[0] as (message: ServerToClientMessage) => void;
+      emit({
+        type: SERVER_MESSAGE_TYPES.OUTPUT,
+        instance_id: 'inactive-instance',
+        offset: 0,
+        data: 'inactive output'
+      });
+      emit({
+        type: SERVER_MESSAGE_TYPES.OUTPUT,
+        instance_id: 'active-instance',
+        offset: 0,
+        data: 'active output'
+      });
+      emit({
+        type: SERVER_MESSAGE_TYPES.OUTPUT_GAP,
+        instance_id: 'active-instance',
+        requested_offset: 13,
+        available_from_offset: 42
+      });
+      emit({
+        type: SERVER_MESSAGE_TYPES.OUTPUT,
+        instance_id: 'active-instance',
+        offset: 42,
+        data: 'after gap'
+      });
+    });
+
+    expect(terminalInstances[0]!.writes).toEqual(['active output', '\x1bc', 'after gap']);
+    expect(client.acknowledgeOutput).toHaveBeenCalledTimes(2);
+    expect(client.acknowledgeOutput).toHaveBeenNthCalledWith(1, 'active-instance', 13);
+    expect(client.acknowledgeOutput).toHaveBeenNthCalledWith(2, 'active-instance', 51);
+    expect(client.updateRecoveryOffsets).toHaveBeenCalledWith({ lastOutputOffset: 42 });
 
     act(() => {
       root.unmount();
     });
-
-    expect(messageListeners.size).toBe(0);
-    for (const listener of messageListeners) {
-      listener({
-        type: SERVER_MESSAGE_TYPES.OUTPUT,
-        instance_id: 'instance-id',
-        offset: 0,
-        data: 'stale'
-      });
-    }
-
-    expect(client.acknowledgeOutput).not.toHaveBeenCalled();
   });
 });

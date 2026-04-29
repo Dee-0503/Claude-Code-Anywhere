@@ -41,6 +41,7 @@ export interface InputMessagePayload {
   type: typeof CLIENT_MESSAGE_TYPES.INPUT;
   instance_id: string;
   input_id: string;
+  input_offset?: number;
   payload: string;
 }
 
@@ -108,6 +109,7 @@ export interface InputAckMessagePayload {
   type: typeof SERVER_MESSAGE_TYPES.INPUT_ACK;
   instance_id: string;
   input_id: string;
+  input_offset: number;
   status: InputAckStatus;
 }
 
@@ -116,6 +118,7 @@ export interface QueuedInputMessagePayload {
   instance_id: string;
   inputs: Array<{
     input_id: string;
+    input_offset: number;
     device_id: string;
     payload: string;
     status: 'queued';

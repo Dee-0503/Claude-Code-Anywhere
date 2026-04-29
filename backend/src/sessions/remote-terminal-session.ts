@@ -127,6 +127,7 @@ function createHarnessSessionService(
   function broadcastQueuedInputs(instanceId: string): void {
     const inputs = inputQueue.listQueuedInputs(instanceId).map((message) => ({
       input_id: message.id,
+      input_offset: message.inputOffset,
       device_id: message.deviceId,
       payload: message.payload,
       status: 'queued' as const
@@ -315,12 +316,14 @@ function createHarnessSessionService(
             return;
           }
           if (message.type === CLIENT_MESSAGE_TYPES.INPUT) {
-            const result = inputQueue.enqueue({
+            const enqueueInput = {
               id: message.input_id,
               instanceId: message.instance_id,
               deviceId: input.device_id,
-              payload: message.payload
-            });
+              payload: message.payload,
+              ...(message.input_offset === undefined ? {} : { inputOffset: message.input_offset })
+            };
+            const result = inputQueue.enqueue(enqueueInput);
             if (inputQueue.classify(message.payload) === 'interrupt') {
               const confirmations = interruptConfirmationsByInstance.get(message.instance_id) ?? [];
               confirmations.push({ inputId: message.input_id, deviceId: input.device_id });
@@ -336,6 +339,7 @@ function createHarnessSessionService(
               type: SERVER_MESSAGE_TYPES.INPUT_ACK,
               instance_id: message.instance_id,
               input_id: message.input_id,
+              input_offset: result.message.inputOffset,
               status: result.status
             });
             broadcastQueuedInputs(message.instance_id);
@@ -402,16 +406,20 @@ function createHarnessSessionService(
           return presence.list(instanceId);
         },
         async queueDisconnectedInput(
-          inputMessage: { input_id: string; payload: string },
+          inputMessage: { input_id: string; input_offset?: number; payload: string },
           targetInstanceId = instanceId
         ) {
           assertDeviceCanAccessInstance(input.device_id, targetInstanceId);
-          inputQueue.enqueue({
+          const enqueueInput = {
             id: inputMessage.input_id,
             instanceId: targetInstanceId,
             deviceId: input.device_id,
-            payload: inputMessage.payload
-          });
+            payload: inputMessage.payload,
+            ...(inputMessage.input_offset === undefined
+              ? {}
+              : { inputOffset: inputMessage.input_offset })
+          };
+          inputQueue.enqueue(enqueueInput);
           broadcastQueuedInputs(targetInstanceId);
         },
         async confirmPendingInput(inputIds: readonly string[], targetInstanceId = instanceId) {

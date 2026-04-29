@@ -14,6 +14,7 @@ export interface InputQueueOptions {
 
 export interface EnqueueInput {
   readonly id: InputMessageId;
+  readonly inputOffset?: number;
   readonly instanceId: ClaudeInstanceId;
   readonly deviceId: DeviceId;
   readonly payload: string;
@@ -32,29 +33,56 @@ export function createInputQueue(options: InputQueueOptions = {}) {
     return payload === '' ? 'interrupt' : 'text';
   }
 
+  function latestAcceptedOffset(instanceId: ClaudeInstanceId): number {
+    return repository
+      .listByInstance(instanceId)
+      .filter((message) => message.status !== 'cancelled' && message.status !== 'failed')
+      .reduce((latest, message) => Math.max(latest, message.inputOffset), 0);
+  }
+
+  function nextLegacyOffset(instanceId: ClaudeInstanceId): number {
+    return (
+      repository
+        .listByInstance(instanceId)
+        .filter((message) => message.status !== 'failed')
+        .reduce((latest, message) => Math.max(latest, message.inputOffset), 0) + 1
+    );
+  }
+
   function enqueue(input: EnqueueInput): EnqueueResult {
+    const inputOffset = input.inputOffset ?? nextLegacyOffset(input.instanceId);
     const existing = repository.get(input.instanceId, input.id);
     if (existing !== undefined) {
       return { status: INPUT_ACK_STATUSES.DUPLICATE, message: existing };
     }
-    if (classify(input.payload) === 'interrupt') {
-      const message = repository.create({
-        id: input.id,
-        instanceId: input.instanceId,
-        deviceId: input.deviceId,
-        payload: input.payload,
-        now: now()
-      });
-      return { status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION, message };
+
+    const existingOffset = repository.getByOffset(input.instanceId, inputOffset);
+    if (existingOffset !== undefined) {
+      return { status: INPUT_ACK_STATUSES.DUPLICATE, message: existingOffset };
     }
 
-    const message = repository.create({
+    const messageInput = {
       id: input.id,
+      inputOffset,
       instanceId: input.instanceId,
       deviceId: input.deviceId,
       payload: input.payload,
       now: now()
-    });
+    };
+
+    if (inputOffset <= latestAcceptedOffset(input.instanceId)) {
+      return {
+        status: INPUT_ACK_STATUSES.REJECTED,
+        message: repository.createFailed(messageInput)
+      };
+    }
+
+    if (classify(input.payload) === 'interrupt') {
+      const message = repository.create(messageInput);
+      return { status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION, message };
+    }
+
+    const message = repository.create(messageInput);
     return { status: INPUT_ACK_STATUSES.ACCEPTED, message };
   }
 
@@ -70,8 +98,13 @@ export function createInputQueue(options: InputQueueOptions = {}) {
     return ready;
   }
 
-  function listPendingConfirmations(instanceId: ClaudeInstanceId): InputMessage[] {
-    return repository.listByInstance(instanceId).filter((message) => message.status === 'queued');
+  function listPendingConfirmations(
+    instanceId: ClaudeInstanceId,
+    lastInputOffset = 0
+  ): InputMessage[] {
+    return repository
+      .listByInstance(instanceId)
+      .filter((message) => message.status === 'queued' && message.inputOffset > lastInputOffset);
   }
 
   function listQueuedInputs(instanceId: ClaudeInstanceId): InputMessage[] {

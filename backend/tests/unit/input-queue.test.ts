@@ -10,6 +10,7 @@ describe('input queue', () => {
     expect(
       queue.enqueue({
         id: 'input-1',
+        inputOffset: 1,
         instanceId: 'instance-id',
         deviceId: 'device-id',
         payload: 'first'
@@ -18,6 +19,7 @@ describe('input queue', () => {
     expect(
       queue.enqueue({
         id: 'input-2',
+        inputOffset: 2,
         instanceId: 'instance-id',
         deviceId: 'device-id',
         payload: 'second'
@@ -36,6 +38,7 @@ describe('input queue', () => {
     expect(
       queue.enqueue({
         id: 'input-1',
+        inputOffset: 1,
         instanceId: 'instance-id',
         deviceId: 'device-id',
         payload: 'npm test\n'
@@ -44,6 +47,7 @@ describe('input queue', () => {
     expect(
       queue.enqueue({
         id: 'input-1',
+        inputOffset: 1,
         instanceId: 'instance-id',
         deviceId: 'device-id',
         payload: 'npm test\n'
@@ -59,6 +63,7 @@ describe('input queue', () => {
 
     queue.enqueue({
       id: 'input-1',
+      inputOffset: 1,
       instanceId: 'instance-id',
       deviceId: 'device-id',
       payload: 'npm test\n'
@@ -73,6 +78,7 @@ describe('input queue', () => {
 
     queue.enqueue({
       id: 'input-1',
+      inputOffset: 1,
       instanceId: 'instance-id',
       deviceId: 'device-id',
       payload: 'npm test\n'
@@ -84,6 +90,64 @@ describe('input queue', () => {
         payload: 'npm test\n',
         status: 'queued'
       })
+    ]);
+  });
+
+  it('rejects old input offsets and deduplicates retried offsets even with a new input id', () => {
+    const queue = createInputQueue({ now: () => new Date('2026-04-25T12:00:00.000Z') });
+
+    expect(
+      queue.enqueue({
+        id: 'input-1',
+        inputOffset: 1,
+        instanceId: 'instance-id',
+        deviceId: 'device-id',
+        payload: 'npm test\n'
+      }).status
+    ).toBe(INPUT_ACK_STATUSES.ACCEPTED);
+    queue.drainReady('instance-id');
+
+    expect(
+      queue.enqueue({
+        id: 'input-1-retried-with-new-id',
+        inputOffset: 1,
+        instanceId: 'instance-id',
+        deviceId: 'device-id',
+        payload: 'npm test\n'
+      }).status
+    ).toBe(INPUT_ACK_STATUSES.DUPLICATE);
+    expect(
+      queue.enqueue({
+        id: 'input-old',
+        inputOffset: 0,
+        instanceId: 'instance-id',
+        deviceId: 'device-id',
+        payload: 'stale\n'
+      }).status
+    ).toBe(INPUT_ACK_STATUSES.REJECTED);
+    expect(queue.drainReady('instance-id')).toHaveLength(0);
+  });
+
+  it('uses last_input_offset to hide already acknowledged reconnect recovery input', () => {
+    const queue = createInputQueue({ now: () => new Date('2026-04-25T12:00:00.000Z') });
+
+    queue.enqueue({
+      id: 'input-1',
+      inputOffset: 1,
+      instanceId: 'instance-id',
+      deviceId: 'device-id',
+      payload: 'npm test\n'
+    });
+    queue.enqueue({
+      id: 'input-2',
+      inputOffset: 2,
+      instanceId: 'instance-id',
+      deviceId: 'device-id',
+      payload: 'git status\n'
+    });
+
+    expect(queue.listPendingConfirmations('instance-id', 1).map((message) => message.id)).toEqual([
+      'input-2'
     ]);
   });
 });

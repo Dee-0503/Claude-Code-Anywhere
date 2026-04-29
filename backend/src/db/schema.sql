@@ -57,6 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_instances_created_by_device_id ON instances(creat
 CREATE TABLE IF NOT EXISTS input_messages (
   id TEXT PRIMARY KEY,
   instance_id TEXT NOT NULL,
+  input_offset INTEGER NOT NULL DEFAULT 0 CHECK (input_offset >= 0),
   device_id TEXT NOT NULL,
   payload TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('queued', 'injected', 'acked', 'cancelled', 'failed')),
@@ -69,6 +70,7 @@ CREATE TABLE IF NOT EXISTS input_messages (
 
 CREATE INDEX IF NOT EXISTS idx_input_messages_instance_status_created ON input_messages(instance_id, status, created_at);
 CREATE INDEX IF NOT EXISTS idx_input_messages_device_id ON input_messages(device_id);
+CREATE INDEX IF NOT EXISTS idx_input_messages_instance_offset ON input_messages(instance_id, input_offset);
 
 CREATE TABLE IF NOT EXISTS connections (
   connection_id TEXT PRIMARY KEY,

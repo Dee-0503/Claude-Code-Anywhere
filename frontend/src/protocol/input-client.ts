@@ -8,13 +8,19 @@ import {
 
 export interface PendingInput {
   readonly inputId: InputMessageId;
+  readonly inputOffset: number;
   readonly payload: string;
   readonly sent: boolean;
   readonly awaitingConfirmation: boolean;
 }
 
 export interface InputTransport {
-  sendInput(input: { instanceId: string; inputId: InputMessageId; payload: string }): void;
+  sendInput(input: {
+    instanceId: string;
+    inputId: InputMessageId;
+    inputOffset: number;
+    payload: string;
+  }): void;
 }
 
 export interface InputRecoveryClientOptions {
@@ -23,6 +29,7 @@ export interface InputRecoveryClientOptions {
   readonly transport: InputTransport;
   readonly retryAfterMs?: number;
   readonly createInputId?: () => InputMessageId;
+  readonly initialOnline?: boolean;
 }
 
 export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
@@ -31,12 +38,14 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
     options.createInputId ??
     (() => `${options.deviceId}:${Date.now()}:${Math.random().toString(36).slice(2)}`);
   const pendingInputs = new Map<InputMessageId, PendingInput>();
-  let online = true;
+  let nextInputOffset = 1;
+  let online = options.initialOnline ?? true;
 
   function transmit(input: PendingInput): void {
     options.transport.sendInput({
       instanceId: options.instanceId,
       inputId: input.inputId,
+      inputOffset: input.inputOffset,
       payload: input.payload
     });
     pendingInputs.set(input.inputId, { ...input, sent: true });
@@ -54,6 +63,7 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
   function send(payload: string): InputMessageId {
     const input: PendingInput = {
       inputId: createInputId(),
+      inputOffset: nextInputOffset++,
       payload,
       sent: false,
       awaitingConfirmation: false
@@ -87,8 +97,20 @@ export function createInputRecoveryClient(options: InputRecoveryClientOptions) {
     return [...pendingInputs.values()];
   }
 
+  function replayUnacknowledgedInputs(): void {
+    for (const input of pendingInputs.values()) {
+      if (!input.awaitingConfirmation) {
+        transmit(input);
+      }
+    }
+  }
+
   function setOnline(nextOnline: boolean): void {
+    const wasOnline = online;
     online = nextOnline;
+    if (!wasOnline && nextOnline) {
+      replayUnacknowledgedInputs();
+    }
   }
 
   function confirmReplay(): void {

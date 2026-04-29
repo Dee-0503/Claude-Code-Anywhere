@@ -7,9 +7,10 @@ on:
       - 'docs/**'
       - 'specs/**/*.md'
       - '**/*.md'
-      - 'CLAUDE.md'
-      - '.claude/rules/**/*.md'
-      - '.github/workflows/docs-only-auto-merge.yml'
+      - '!CLAUDE.md'
+      - '!.claude/rules/**/*.md'
+      - '!.specify/**'
+      - '!.github/workflows/**'
 
 permissions:
   contents: read

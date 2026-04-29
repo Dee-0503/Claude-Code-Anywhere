@@ -93,6 +93,7 @@ export type InputMessageStatus =
 export interface InputMessage {
   id: InputMessageId;
   instanceId: ClaudeInstanceId;
+  inputOffset: number;
   deviceId: DeviceId;
   payload: string;
   status: InputMessageStatus;

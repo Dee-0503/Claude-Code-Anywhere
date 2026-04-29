@@ -5,7 +5,9 @@ import { createInputRecoveryClient } from '../../src/protocol/input-client.js';
 
 function createTransport() {
   const sendInput =
-    vi.fn<(input: { instanceId: string; inputId: string; payload: string }) => void>();
+    vi.fn<
+      (input: { instanceId: string; inputId: string; inputOffset: number; payload: string }) => void
+    >();
   return { sendInput };
 }
 
@@ -28,11 +30,13 @@ describe('input recovery client', () => {
     expect(transport.sendInput).toHaveBeenNthCalledWith(1, {
       instanceId: 'instance-id',
       inputId: 'input-1',
+      inputOffset: 1,
       payload: 'npm test\n'
     });
     expect(transport.sendInput).toHaveBeenNthCalledWith(2, {
       instanceId: 'instance-id',
       inputId: 'input-1',
+      inputOffset: 1,
       payload: 'npm test\n'
     });
     vi.useRealTimers();
@@ -52,6 +56,7 @@ describe('input recovery client', () => {
       type: SERVER_MESSAGE_TYPES.INPUT_ACK,
       instance_id: 'instance-id',
       input_id: 'input-1',
+      input_offset: 1,
       status: INPUT_ACK_STATUSES.DUPLICATE
     });
 
@@ -74,6 +79,7 @@ describe('input recovery client', () => {
       type: SERVER_MESSAGE_TYPES.INPUT_ACK,
       instance_id: 'instance-id',
       input_id: 'interrupt-1',
+      input_offset: 1,
       status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION
     });
     vi.advanceTimersByTime(1_000);
@@ -107,6 +113,7 @@ describe('input recovery client', () => {
     expect(transport.sendInput).toHaveBeenCalledWith({
       instanceId: 'instance-id',
       inputId: 'input-1',
+      inputOffset: 1,
       payload: 'npm test\n'
     });
   });
@@ -123,6 +130,62 @@ describe('input recovery client', () => {
     client.send('npm test\n');
     client.setOnline(false);
     client.confirmReplay();
+
+    expect(transport.sendInput).toHaveBeenCalledTimes(1);
+  });
+
+  it('resends sent unacknowledged input when the transport comes back online', () => {
+    const transport = createTransport();
+    const ids = ['input-1', 'input-2'];
+    const client = createInputRecoveryClient({
+      deviceId: 'device-id',
+      instanceId: 'instance-id',
+      transport,
+      createInputId: () => ids.shift() ?? 'unexpected-input'
+    });
+
+    client.send('first');
+    client.setOnline(false);
+    client.send('second');
+
+    expect(transport.sendInput).toHaveBeenCalledTimes(1);
+
+    client.setOnline(true);
+
+    expect(transport.sendInput).toHaveBeenCalledTimes(3);
+    expect(transport.sendInput).toHaveBeenNthCalledWith(2, {
+      instanceId: 'instance-id',
+      inputId: 'input-1',
+      inputOffset: 1,
+      payload: 'first'
+    });
+    expect(transport.sendInput).toHaveBeenNthCalledWith(3, {
+      instanceId: 'instance-id',
+      inputId: 'input-2',
+      inputOffset: 2,
+      payload: 'second'
+    });
+  });
+
+  it('keeps pending confirmation input queued when the transport comes back online', () => {
+    const transport = createTransport();
+    const client = createInputRecoveryClient({
+      deviceId: 'device-id',
+      instanceId: 'instance-id',
+      transport,
+      createInputId: () => 'interrupt-1'
+    });
+
+    client.send('interrupt');
+    client.handleMessage({
+      type: SERVER_MESSAGE_TYPES.INPUT_ACK,
+      instance_id: 'instance-id',
+      input_id: 'interrupt-1',
+      input_offset: 1,
+      status: INPUT_ACK_STATUSES.PENDING_CONFIRMATION
+    });
+    client.setOnline(false);
+    client.setOnline(true);
 
     expect(transport.sendInput).toHaveBeenCalledTimes(1);
   });

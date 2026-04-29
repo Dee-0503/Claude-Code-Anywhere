@@ -1,13 +1,23 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  CLIENT_MESSAGE_TYPES,
   SERVER_MESSAGE_TYPES,
+  type ClientMessageType,
   type ClientToServerMessage,
   type HelloMessagePayload,
   type InputAckStatus,
   type WebSocketConnectionParams,
   type ConnectionState
 } from '../../../shared/protocol/messages.js';
+import { invalidRequest } from './errors.js';
+import {
+  isIsoDateString,
+  requireEnumField,
+  requireNonNegativeIntegerField,
+  requireRecord,
+  requireStringField
+} from './validation.js';
 import { BoundedOutputBuffer } from '../sessions/output-buffer.js';
 import {
   authenticateWebSocketConnection,
@@ -26,6 +36,75 @@ export interface AuthenticatedWebSocketProtocolServiceOptions extends WebSocketP
 
 export interface AcceptedConnection extends HelloMessagePayload {
   readonly replay: ReplayMessage[];
+}
+
+const MAX_INPUT_PAYLOAD_BYTES = 64 * 1024;
+const CLIENT_MESSAGE_TYPE_VALUES = Object.values(CLIENT_MESSAGE_TYPES) as ClientMessageType[];
+
+function parseClientMessagePayload(raw: string): Record<string, unknown> {
+  try {
+    return requireRecord(JSON.parse(raw), 'WebSocket client message must be an object');
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw invalidRequest('WebSocket client message must be valid JSON');
+    }
+    throw error;
+  }
+}
+
+function requirePayloadWithinLimit(source: Record<string, unknown>): string {
+  const payload = requireStringField(source, 'payload');
+  if (Buffer.byteLength(payload, 'utf8') > MAX_INPUT_PAYLOAD_BYTES) {
+    throw invalidRequest(`payload must be at most ${MAX_INPUT_PAYLOAD_BYTES} bytes`, {
+      field: 'payload',
+      maxBytes: MAX_INPUT_PAYLOAD_BYTES
+    });
+  }
+  return payload;
+}
+
+function requireIsoTimestamp(source: Record<string, unknown>, field: string): string {
+  const value = source[field];
+  if (!isIsoDateString(value)) {
+    throw invalidRequest(`${field} must be an ISO timestamp`, { field });
+  }
+  return value;
+}
+
+function requireInstanceInputFields(source: Record<string, unknown>) {
+  return {
+    instance_id: requireStringField(source, 'instance_id'),
+    input_id: requireStringField(source, 'input_id')
+  };
+}
+
+function validateClientMessage(raw: string): ClientToServerMessage {
+  const payload = parseClientMessagePayload(raw);
+  const type = requireEnumField(payload, 'type', CLIENT_MESSAGE_TYPE_VALUES);
+
+  switch (type) {
+    case CLIENT_MESSAGE_TYPES.INPUT:
+      return {
+        type,
+        ...requireInstanceInputFields(payload),
+        ...(payload.input_offset === undefined
+          ? {}
+          : { input_offset: requireNonNegativeIntegerField(payload, 'input_offset') }),
+        payload: requirePayloadWithinLimit(payload)
+      };
+    case CLIENT_MESSAGE_TYPES.ACK_OUTPUT:
+      return {
+        type,
+        instance_id: requireStringField(payload, 'instance_id'),
+        offset: requireNonNegativeIntegerField(payload, 'offset')
+      };
+    case CLIENT_MESSAGE_TYPES.CANCEL_INPUT:
+    case CLIENT_MESSAGE_TYPES.CONFIRM_INTERRUPT:
+    case CLIENT_MESSAGE_TYPES.CANCEL_INTERRUPT:
+      return { type, ...requireInstanceInputFields(payload) };
+    case CLIENT_MESSAGE_TYPES.HEARTBEAT:
+      return { type, sent_at: requireIsoTimestamp(payload, 'sent_at') };
+  }
 }
 
 export function createWebSocketProtocolService(options: WebSocketProtocolServiceOptions = {}) {
@@ -93,11 +172,17 @@ export function createWebSocketProtocolService(options: WebSocketProtocolService
         available_from_offset: input.availableFromOffset
       };
     },
-    serializeInputAck(input: { instanceId: string; inputId: string; status: InputAckStatus }) {
+    serializeInputAck(input: {
+      instanceId: string;
+      inputId: string;
+      inputOffset: number;
+      status: InputAckStatus;
+    }) {
       return {
         type: SERVER_MESSAGE_TYPES.INPUT_ACK,
         instance_id: input.instanceId,
         input_id: input.inputId,
+        input_offset: input.inputOffset,
         status: input.status
       };
     },
@@ -108,7 +193,7 @@ export function createWebSocketProtocolService(options: WebSocketProtocolService
       };
     },
     parseClientMessage(raw: string): ClientToServerMessage {
-      return JSON.parse(raw) as ClientToServerMessage;
+      return validateClientMessage(raw);
     },
     async appendOutput(instanceId: string, data: string) {
       return getBuffer(instanceId).append(data);
