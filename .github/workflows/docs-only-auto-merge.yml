@@ -1,0 +1,85 @@
+name: Docs-only auto merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [develop]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  docs-only-auto-merge:
+    if: ${{ !github.event.pull_request.draft && startsWith(github.event.pull_request.head.ref, 'docs/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate docs-only changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          changed_files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+
+          if [ -z "$changed_files" ]; then
+            echo "No changed files found."
+            exit 1
+          fi
+
+          invalid_files=$(printf '%s\n' "$changed_files" | grep -Ev '(^|/)[^/]+\.md$|^CLAUDE\.md$|^\.claude/rules/.*\.md$|^specs/.*\.md$' || true)
+          protected_files=$(printf '%s\n' "$changed_files" | grep -E '^\.github/workflows/' || true)
+
+          if [ -n "$protected_files" ]; then
+            echo "Workflow self-modifications require normal PR review and checks:"
+            printf '%s\n' "$protected_files"
+            exit 1
+          fi
+
+          if [ -n "$invalid_files" ]; then
+            echo "This docs/* PR contains non-docs-only files:"
+            printf '%s\n' "$invalid_files"
+            exit 1
+          fi
+
+          echo "Docs-only validation passed."
+
+      - name: Merge pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --squash --delete-branch
+
+      - name: Create develop to test pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          existing_pr=$(gh pr list --base test --head develop --state open --json url --jq '.[0].url')
+
+          if [ -n "$existing_pr" ]; then
+            echo "Develop-to-test PR already exists: $existing_pr"
+            exit 0
+          fi
+
+          gh pr create \
+            --base test \
+            --head develop \
+            --title "Promote develop to test" \
+            --body "$(cat <<'EOF'
+          Automated follow-up PR after docs-only changes were merged into develop.
+
+          ## Summary
+          - Promote the latest develop branch changes to test after docs-only auto-merge.
+
+          ## Test plan
+          - [ ] Validate test-branch checks and review requirements before merging.
+          EOF
+          )"
